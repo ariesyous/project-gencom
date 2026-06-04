@@ -1,3 +1,7 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Audio transient files
+audio/*skit*_line*.mp3
+audio/*skit*_line*.mp3.import
