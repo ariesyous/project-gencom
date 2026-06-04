@@ -297,6 +297,8 @@ func _handle_json_packet(json_text: String) -> void:
 				play_stinger()
 			elif data.get("event") == "set_scene":
 				_set_scene(data.get("scene", "apartment"))
+			elif data.get("event") == "park_cam":
+				_park_exterior_cam(data.get("scene", "apartment"))
 
 func play_line(file_name: String, actor_id: String) -> void:
 	if not actors.has(actor_id):
@@ -409,6 +411,19 @@ func _set_scene(scene_id: String) -> void:
 	_teleport_to_scene(scene_id)
 	current_scene = scene_id
 	_cut_to_wide()
+
+func _park_exterior_cam(scene_id: String) -> void:
+	# Dev hook (not used in normal playback): hold a single set's ExteriorCam indefinitely
+	# so a clean facade still can be grabbed. Unlike _set_scene, there is no pan tween, no
+	# actor teleport, and no _cut_to_wide — the camera just stays put until another event.
+	if not SCENES.has(scene_id):
+		print("Sitcom: Ignoring park_cam for unknown scene '", scene_id, "'")
+		return
+	var ext := get_node_or_null(SCENES[scene_id]["exterior_cam"]) as Camera3D
+	if ext:
+		ext.make_current()
+	active_cam = null
+	active_cam_target = null
 
 func _teleport_to_scene(scene_id: String) -> void:
 	# Drop both actors into the new region (hidden behind the establishing shot).

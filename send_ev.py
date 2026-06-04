@@ -2,6 +2,7 @@
 
 Usage:
     python send_ev.py set_scene coffee_shop
+    python send_ev.py park_cam grocery        # dev: hold a set's exterior cam for a facade still
     python send_ev.py play_audio skit_7_line_0.mp3 A
     python send_ev.py trigger_laugh
     python send_ev.py play_stinger
@@ -19,6 +20,8 @@ def build_payload(argv):
     ev = argv[1]
     payload = {"event": ev}
     if ev == "set_scene":
+        payload["scene"] = argv[2]
+    elif ev == "park_cam":
         payload["scene"] = argv[2]
     elif ev == "play_audio":
         payload["file"] = argv[2]

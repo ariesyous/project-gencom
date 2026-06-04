@@ -1300,6 +1300,25 @@ roughness = 0.7
 albedo_color = Color(0.2, 0.42, 0.7, 1)
 roughness = 0.7
 
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_dress"]
+frequency = 0.05
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_dress"]
+seamless = true
+noise = SubResource("FastNoiseLite_dress")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_shelfgoods"]
+albedo_color = Color(0.2, 0.42, 0.7, 1)
+roughness = 0.7
+roughness_texture = SubResource("NoiseTexture2D_dress")
+uv1_scale = Vector3(8, 1, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_producebin"]
+albedo_color = Color(0.5, 0.32, 0.16, 1)
+roughness = 0.85
+roughness_texture = SubResource("NoiseTexture2D_dress")
+uv1_scale = Vector3(3, 1, 3)
+
 [node name="ComedyStage" type="Node3D" unique_id=1865888971]
 script = ExtResource("1_ig7tw")
 
@@ -2381,6 +2400,7 @@ volume_db = -3.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 0)
 
 [node name="Floor" type="CSGBox3D" parent="CoffeeShopEnvironment" unique_id=910481033]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00016403198, 0.0042698383, -0.0032191277)
 material_override = ExtResource("2_272bh")
 size = Vector3(14, 0.1, 10)
 
@@ -2654,6 +2674,59 @@ outer_radius = 0.1
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 1.6, -3.5)
 material_override = SubResource("StandardMaterial3D_orange")
 size = Vector3(0.34, 0.16, 0.24)
+
+[node name="CupLabel" type="Label3D" parent="CoffeeShopEnvironment/CafeDressing" unique_id=952000040]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.583, 1.34, -3.6)
+pixel_size = 0.004
+modulate = Color(0.82, 0.06, 0.06, 1)
+outline_modulate = Color(0.96, 0.93, 0.86, 1)
+text = "TIMMY
+HO'S"
+font_size = 16
+outline_size = 5
+
+[node name="DonutTag" type="Label3D" parent="CoffeeShopEnvironment/CafeDressing" unique_id=952000041]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.85, 1.85, -3.1)
+pixel_size = 0.01
+modulate = Color(0.82, 0.06, 0.06, 1)
+outline_modulate = Color(0.96, 0.93, 0.86, 1)
+text = "FRESH"
+font_size = 16
+outline_size = 6
+
+[node name="CreamCaddy" type="CSGBox3D" parent="CoffeeShopEnvironment/CafeDressing" unique_id=952000050]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.15, 1.36, -3.4)
+material_override = ExtResource("5_4c57u")
+size = Vector3(0.22, 0.12, 0.16)
+
+[node name="CreamJugL" type="CSGCylinder3D" parent="CoffeeShopEnvironment/CafeDressing" unique_id=952000051]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.08, 1.48, -3.4)
+material_override = SubResource("StandardMaterial3D_cream")
+radius = 0.035
+height = 0.12
+
+[node name="CreamJugR" type="CSGCylinder3D" parent="CoffeeShopEnvironment/CafeDressing" unique_id=952000052]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.22, 1.48, -3.4)
+material_override = SubResource("StandardMaterial3D_cream")
+radius = 0.035
+height = 0.12
+
+[node name="Muffin" type="CSGSphere3D" parent="CoffeeShopEnvironment/CafeDressing" unique_id=952000053]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.15, 1.66, -3.2)
+material_override = SubResource("StandardMaterial3D_brown")
+radius = 0.075
+
+[node name="LidStack" type="CSGCylinder3D" parent="CoffeeShopEnvironment/CafeDressing" unique_id=952000054]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 1.34, -3.7)
+material_override = ExtResource("4_kek77")
+radius = 0.075
+height = 0.08
+
+[node name="StirCup" type="CSGCylinder3D" parent="CoffeeShopEnvironment/CafeDressing" unique_id=952000055]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.95, 1.42, -3.5)
+material_override = ExtResource("4_kek77")
+radius = 0.04
+height = 0.18
 
 [node name="PendantCordC" type="CSGCylinder3D" parent="CoffeeShopEnvironment/CafeDressing" unique_id=952000013]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 3.55, 1.8)
@@ -2950,7 +3023,7 @@ size = Vector3(0.6, 1.6, 6)
 
 [node name="ShelfEastGoods" type="CSGBox3D" parent="GroceryEnvironment/Aisles" unique_id=953000003]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.2, 1.75, -0.5)
-material_override = SubResource("StandardMaterial3D_blue")
+material_override = SubResource("StandardMaterial3D_shelfgoods")
 size = Vector3(0.5, 0.35, 6)
 
 [node name="ProdRed" type="CSGBox3D" parent="GroceryEnvironment/Aisles" unique_id=953000004]
@@ -3035,6 +3108,87 @@ $1"
 font_size = 22
 outline_size = 8
 
+[node name="LabelProdRed" type="Label3D" parent="GroceryEnvironment/Aisles" unique_id=953000040]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 2.1, -3.52)
+pixel_size = 0.01
+modulate = Color(0.96, 0.93, 0.86, 1)
+outline_modulate = Color(0.1, 0.07, 0.05, 1)
+text = "CHIPS"
+font_size = 16
+outline_size = 6
+
+[node name="LabelProdBlue" type="Label3D" parent="GroceryEnvironment/Aisles" unique_id=953000041]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 2.1, -3.52)
+pixel_size = 0.01
+modulate = Color(0.96, 0.93, 0.86, 1)
+outline_modulate = Color(0.1, 0.07, 0.05, 1)
+text = "OAT-O's"
+font_size = 16
+outline_size = 6
+
+[node name="LabelProdOrange" type="Label3D" parent="GroceryEnvironment/Aisles" unique_id=953000042]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, -3.52)
+pixel_size = 0.01
+modulate = Color(0.96, 0.93, 0.86, 1)
+outline_modulate = Color(0.1, 0.07, 0.05, 1)
+text = "MAC&CHZ"
+font_size = 14
+outline_size = 6
+
+[node name="LabelProdGreen" type="Label3D" parent="GroceryEnvironment/Aisles" unique_id=953000043]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2.1, -3.52)
+pixel_size = 0.01
+modulate = Color(0.96, 0.93, 0.86, 1)
+outline_modulate = Color(0.1, 0.07, 0.05, 1)
+text = "SOUP"
+font_size = 16
+outline_size = 6
+
+[node name="LabelProdPink" type="Label3D" parent="GroceryEnvironment/Aisles" unique_id=953000044]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 2.1, -3.52)
+pixel_size = 0.01
+modulate = Color(0.96, 0.93, 0.86, 1)
+outline_modulate = Color(0.1, 0.07, 0.05, 1)
+text = "COOKIES"
+font_size = 14
+outline_size = 6
+
+[node name="LabelWestA" type="Label3D" parent="GroceryEnvironment/Aisles" unique_id=953000045]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 2.1, -1.72)
+pixel_size = 0.01
+modulate = Color(0.96, 0.93, 0.86, 1)
+outline_modulate = Color(0.1, 0.07, 0.05, 1)
+text = "BEANS"
+font_size = 16
+outline_size = 6
+
+[node name="LabelWestB" type="Label3D" parent="GroceryEnvironment/Aisles" unique_id=953000046]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 2.1, 0.28)
+pixel_size = 0.01
+modulate = Color(0.96, 0.93, 0.86, 1)
+outline_modulate = Color(0.1, 0.07, 0.05, 1)
+text = "JUICE"
+font_size = 16
+outline_size = 6
+
+[node name="LabelWestC" type="Label3D" parent="GroceryEnvironment/Aisles" unique_id=953000047]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 2.1, 1.78)
+pixel_size = 0.01
+modulate = Color(0.96, 0.93, 0.86, 1)
+outline_modulate = Color(0.1, 0.07, 0.05, 1)
+text = "BREAD"
+font_size = 16
+outline_size = 6
+
+[node name="LabelNoName" type="Label3D" parent="GroceryEnvironment/Aisles" unique_id=953000048]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 2, 1.5)
+pixel_size = 0.01
+modulate = Color(0.96, 0.78, 0.05, 1)
+outline_modulate = Color(0.1, 0.1, 0.1, 1)
+text = "NO NAME"
+font_size = 22
+outline_size = 8
+
 [node name="Produce" type="Node3D" parent="GroceryEnvironment" unique_id=953000020]
 
 [node name="Apples" type="CSGSphere3D" parent="GroceryEnvironment/Produce" unique_id=953000021]
@@ -3091,3 +3245,35 @@ outline_size = 6
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 0.4, 1.6)
 material_override = ExtResource("5_4c57u")
 size = Vector3(0.6, 0.5, 0.95)
+
+[node name="GroceryBag" type="CSGBox3D" parent="GroceryEnvironment/Checkout2" unique_id=953000035]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.4, 1.26, 2.8)
+material_override = SubResource("StandardMaterial3D_cream")
+size = Vector3(0.3, 0.4, 0.3)
+
+[node name="BagHandle" type="CSGBox3D" parent="GroceryEnvironment/Checkout2" unique_id=953000036]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.4, 1.5, 2.8)
+material_override = ExtResource("4_kek77")
+size = Vector3(0.22, 0.04, 0.04)
+
+[node name="BasketStack1" type="CSGBox3D" parent="GroceryEnvironment/Checkout2" unique_id=953000037]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.6, 1.18, 3.6)
+material_override = ExtResource("7_dg77c")
+size = Vector3(0.42, 0.13, 0.3)
+
+[node name="BasketStack2" type="CSGBox3D" parent="GroceryEnvironment/Checkout2" unique_id=953000038]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.6, 1.32, 3.6)
+material_override = ExtResource("7_dg77c")
+size = Vector3(0.42, 0.13, 0.3)
+
+[node name="BasketStack3" type="CSGBox3D" parent="GroceryEnvironment/Checkout2" unique_id=953000039]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.6, 1.46, 3.6)
+material_override = ExtResource("7_dg77c")
+size = Vector3(0.42, 0.13, 0.3)
+
+[node name="WetFloorCone" type="CSGCylinder3D" parent="GroceryEnvironment/Checkout2" unique_id=953000050]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0.25, 3.4)
+material_override = ExtResource("9_4c57u")
+cone = true
+radius = 0.18
+height = 0.5
