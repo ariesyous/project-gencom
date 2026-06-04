@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(godot --version)",
+      "mcp__godot-ai__editor_state",
+      "Bash(python -m py_compile orchestrator.py)",
+      "mcp__godot-ai__logs_read",
+      "mcp__godot-ai__editor_manage",
+      "mcp__godot-ai__filesystem_manage",
+      "mcp__godot-ai__script_manage",
+      "mcp__godot-ai__editor_screenshot",
+      "mcp__godot-ai__node_set_property",
+      "mcp__godot-ai__batch_execute"
+    ]
+  }
+}
