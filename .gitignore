@@ -5,3 +5,6 @@
 # Audio transient files
 audio/*skit*_line*.mp3
 audio/*skit*_line*.mp3.import
+
+# Secrets and local scripts
+start_comedy.ps1
