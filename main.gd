@@ -1,12 +1,15 @@
 extends Node3D
 
-enum State { WANDERING, HEADING_TO_SEAT, SITTING }
+enum State { WANDERING, HEADING_TO_SEAT, SITTING, OFFSTAGE, ENTERING }
 
 const WALK_ANIM := "walk_v3"
 const IDLE_ANIM := "idle_v1"
 const SIT_ANIM := "sit_v1"
+const TALK_ANIM := "talk_v5"  # arm gestures while speaking (standing still only)
 const SIT_BODY_Y := -0.44  # how far the body drops to rest on the couch
 const ESTABLISH_PAN := 4.0  # seconds the camera slow-trucks across the exterior facade
+const WALK_SPEED := 1.5
+const ENTRANCE_SPEED := 3.4  # Kessler's burst-into-frame stride (walk anim is sped to match)
 
 # The three sets live as separate regions in world space (no visibility toggling,
 # so the global sky/lights survive). Each scene knows its cameras, seats, where the
@@ -46,7 +49,12 @@ var SCENES := {
 		"laugh": "GroceryEnvironment/LaughPlayer",
 		"seat_a": "", "seat_b": "",  # no seats — they wander the aisles
 		"spawn_a": Vector3(78, 0, -2), "spawn_b": Vector3(82, 0, -2),
-		"spawn_k": Vector3(80, 0, -3),  # Kessler's home spot (matches his .tscn position)
+		"spawn_k": Vector3(80, 0, -3),  # Kessler's fallback spot inside the aisles
+		# Where Kessler waits between appearances: past the east wall on the near
+		# (audience) side, where the wide cam's frustum is only ~2.2m wide — fully
+		# off-frame from the wide, the singles, and the ExteriorCam. CSG has no
+		# collision, so he strides straight through the wall into frame.
+		"spawn_k_off": Vector3(89.5, 0, 3.5),
 		"wander_min": Vector3(74, 0, -4), "wander_max": Vector3(86, 0, 4),
 	},
 }
@@ -62,12 +70,26 @@ var actors := {}
 var active_cam: Camera3D = null
 var active_cam_target: Node3D = null
 
+# On-screen subtitle (SubtitleLayer/SubtitleLabel). subtitle_actor is whose line
+# is showing; the caption hides itself when that actor stops speaking.
+const ACTOR_NAMES := {"A": "ALAN", "B": "BRIDGETTE", "K": "KESSLER"}
+var subtitle_label: Label = null
+var subtitle_actor := ""
+
 func _ready() -> void:
 	_init_actor("A", get_node_or_null("Alan"), "BodyA/AnimationAlan")
 	_init_actor("B", get_node_or_null("Bridgette"), "BodyB/AnimationBridgette")
 	# Kessler is a grocery-only neighbor: he lives permanently in the grocery
 	# region and is never teleported with the couple (see fixed_scene below).
 	_init_actor("K", get_node_or_null("Kessler"), "BodyK/AnimationKessler", "grocery")
+	# He waits offstage (outside the grocery's east wall) and bursts into frame
+	# on his first line of a grocery visit — see _kessler_enter.
+	if actors.has("K"):
+		actors["K"]["state"] = State.OFFSTAGE
+		actors["K"]["node"].position = SCENES["grocery"]["spawn_k_off"]
+		actors["K"]["target"] = actors["K"]["node"].position
+
+	subtitle_label = get_node_or_null("SubtitleLayer/SubtitleLabel")
 
 	if has_node("Alan/VoiceA"): $Alan/VoiceA.finished.connect(_on_voice_finished.bind("A"))
 	if has_node("Bridgette/VoiceB"): $Bridgette/VoiceB.finished.connect(_on_voice_finished.bind("B"))
@@ -95,10 +117,11 @@ func _init_actor(id: String, node: Node3D, anim_path: String, fixed_scene: Strin
 				eyes.append(e)
 				eye_base.append(e.scale.y)
 
+	var head: Node3D = body.get_node_or_null("Head" + id) if body else node
 	actors[id] = {
 		"node": node,
 		"body": body,
-		"head": body.get_node_or_null("Head" + id) if body else node,
+		"head": head,
 		"anim": get_node(str(node.name) + "/" + anim_path),
 		"voice": node.get_node_or_null("Voice" + id),
 		"fixed_scene": fixed_scene,  # "" => follows current_scene; else pinned to one set
@@ -110,10 +133,18 @@ func _init_actor(id: String, node: Node3D, anim_path: String, fixed_scene: Strin
 		"blink_end": 0,
 		"state": State.WANDERING,
 		"target": node.position,
-		"speed": 1.5,
+		"speed": WALK_SPEED,
 		"next_decision_time": now + randi_range(1000, 3000),
 		"speaking": false,
-		"speak_until": 0
+		"speak_until": 0,
+		# Reactions (code-driven, like the mouth/blinks — no clip animates the
+		# head or the body's Y, so these can't fight the AnimationPlayer).
+		"head_base_rot_x": head.rotation_degrees.x if head else 0.0,
+		"react_kind": "",   # "" | "laugh" | "nod"
+		"react_start": 0,
+		"react_end": 0,
+		"react_bob": 0.0,   # extra body-Y offset, folded into the sit/stand lerp
+		"next_nod": now + randi_range(3000, 6000),
 	}
 
 func _process(delta: float) -> void:
@@ -121,7 +152,13 @@ func _process(delta: float) -> void:
 	for id in actors:
 		_update_actor(id, delta)
 		_update_face(id)
+		_update_reactions(id)
 	_update_active_camera()
+	# Single clearing point for the subtitle: it rides the same "speaking" flag
+	# as the mouth flap, so both the finished signal and the speak_until watchdog
+	# hide it automatically.
+	if subtitle_actor != "" and actors.has(subtitle_actor) and not actors[subtitle_actor]["speaking"]:
+		_hide_subtitle()
 
 func _update_active_camera() -> void:
 	# Keep the active close-up framed on the speaking actor's head as they move.
@@ -157,6 +194,49 @@ func _update_face(id: String) -> void:
 		data["blink_end"] = now + 110
 		data["next_blink"] = now + randi_range(2400, 5600)
 
+func _update_reactions(id: String) -> void:
+	# Code-driven "listening" life, layered like the mouth/blinks: no body clip
+	# animates the head or Body-Y, so these channels are safe to drive here.
+	# - laugh: head tilts back + a little body bounce (fired by play_laugh)
+	# - nod: two quick dips while a nearby actor is talking
+	var data = actors[id]
+	var head: Node3D = data["head"]
+	if head == null:
+		return
+	var now = Time.get_ticks_msec()
+
+	if now < data["react_end"]:
+		var t: float = float(now - data["react_start"]) / float(data["react_end"] - data["react_start"])
+		var env: float = sin(t * PI)  # ease in and back out over the react
+		if data["react_kind"] == "laugh":
+			head.rotation_degrees.x = data["head_base_rot_x"] + 12.0 * env
+			data["react_bob"] = 0.05 * env * abs(sin(float(now - data["react_start"]) * 0.02))
+		else:  # nod
+			head.rotation_degrees.x = data["head_base_rot_x"] - 9.0 * abs(sin(t * PI * 2.0))
+		return
+
+	# Settle back to neutral once a react ends.
+	data["react_bob"] = 0.0
+	head.rotation_degrees.x = lerp(head.rotation_degrees.x, data["head_base_rot_x"], 0.2)
+
+	# Occasionally nod along while someone nearby is talking (listener behavior).
+	if data["speaking"] or data["state"] == State.OFFSTAGE or now < data["next_nod"]:
+		return
+	var other_id := _nearest_other_id(id)
+	if other_id == "" or not actors[other_id]["speaking"]:
+		return
+	var dist: float = data["node"].position.distance_to(actors[other_id]["node"].position)
+	if dist < 6.0 and randf() < 0.35:
+		_start_react(id, "nod", 900)
+	data["next_nod"] = now + randi_range(4000, 9000)
+
+func _start_react(id: String, kind: String, duration_ms: int) -> void:
+	var data = actors[id]
+	var now = Time.get_ticks_msec()
+	data["react_kind"] = kind
+	data["react_start"] = now
+	data["react_end"] = now + duration_ms
+
 func _handle_network() -> void:
 	if server.is_connection_available():
 		var conn = server.take_connection()
@@ -184,10 +264,11 @@ func _update_actor(id: String, delta: float) -> void:
 	# With three actors the "roommate" is whoever is closest. Because the three
 	# sets are far apart in world space, the nearest actor is naturally the one
 	# sharing this actor's region (e.g. Kessler only ever pairs up in the grocery).
-	var other_node = _nearest_other(id)
+	var other_id := _nearest_other_id(id)
+	var other_node: Node3D = actors[other_id]["node"] if other_id != "" else null
 
 	match data["state"]:
-		State.WANDERING, State.HEADING_TO_SEAT:
+		State.WANDERING, State.HEADING_TO_SEAT, State.ENTERING:
 			var diff = data["target"] - node.position
 			diff.y = 0
 
@@ -205,17 +286,30 @@ func _update_actor(id: String, delta: float) -> void:
 					if other_node:
 						_face_roommate_instant(node, other_node)
 				else:
-					_play_body(data, IDLE_ANIM)
+					if data["state"] == State.ENTERING:
+						# Entrance complete: back to normal pace and pairing.
+						data["state"] = State.WANDERING
+						data["speed"] = WALK_SPEED
+						data["anim"].speed_scale = 1.0
+						if other_node:
+							_face_roommate_instant(node, other_node)
+					# Standing still: gesture while delivering a line, breathe otherwise.
+					_play_body(data, TALK_ANIM if data["speaking"] else IDLE_ANIM)
 		State.SITTING:
 			_play_body(data, SIT_ANIM)
+		State.OFFSTAGE:
+			# Parked out of frame, waiting for an entrance cue.
+			_play_body(data, IDLE_ANIM)
 
-	# Smoothly drop onto / rise off the couch.
+	# Smoothly drop onto / rise off the couch. react_bob (laugh bounce) rides the
+	# same lerp so the body's Y is only ever written here.
 	if data["body"]:
-		var target_y = SIT_BODY_Y if data["state"] == State.SITTING else 0.0
+		var target_y = (SIT_BODY_Y if data["state"] == State.SITTING else 0.0) + data["react_bob"]
 		data["body"].position.y = lerp(data["body"].position.y, target_y, min(1.0, 8.0 * delta))
 
-	# Showmanship: Face roommate when talking (zero Y to avoid gimbal lock)
-	if data["speaking"] and other_node:
+	# Showmanship: Face roommate when talking (zero Y to avoid gimbal lock).
+	# Not while ENTERING — he should face his stride, not twist mid-run.
+	if data["speaking"] and other_node and data["state"] != State.ENTERING:
 		var dir_to_roommate = other_node.position - node.position
 		dir_to_roommate.y = 0
 		if dir_to_roommate.length() > 0.1:
@@ -226,20 +320,24 @@ func _update_actor(id: String, delta: float) -> void:
 		_make_decision(id)
 		data["next_decision_time"] = Time.get_ticks_msec() + randi_range(10000, 30000)
 
-func _nearest_other(id: String) -> Node3D:
+func _nearest_other_id(id: String) -> String:
 	# Closest other actor by world distance (regions are far apart, so this keeps
 	# pairings within a set without hard-coding the A/B pair).
 	var node: Node3D = actors[id]["node"]
-	var best: Node3D = null
+	var best := ""
 	var best_d := INF
 	for oid in actors:
 		if oid == id:
+			continue
+		# A parked (offstage) actor isn't "in the room" — don't face or nod at
+		# him through the wall.
+		if actors[oid]["state"] == State.OFFSTAGE:
 			continue
 		var on: Node3D = actors[oid]["node"]
 		var d := node.position.distance_squared_to(on.position)
 		if d < best_d:
 			best_d = d
-			best = on
+			best = oid
 	return best
 
 func _scene_for(id: String) -> String:
@@ -251,6 +349,10 @@ func _scene_for(id: String) -> String:
 func _play_body(data: Dictionary, anim_name: String) -> void:
 	# Track the intended clip ourselves: a one-shot pose (sit) clears
 	# current_animation when it finishes, which must NOT retrigger it.
+	# Fall back to idle if a library is missing the clip (e.g. a partially
+	# rolled-out new animation) instead of erroring every frame.
+	if not data["anim"].has_animation(anim_name):
+		anim_name = IDLE_ANIM
 	if data.get("cur_anim", "") != anim_name:
 		data["cur_anim"] = anim_name
 		data["anim"].play(anim_name)
@@ -264,6 +366,10 @@ func _face_roommate_instant(node: Node3D, other_node: Node3D) -> void:
 
 func _make_decision(id: String) -> void:
 	var data = actors[id]
+	# Offstage/entering actors don't make idle decisions — the entrance flow
+	# owns their state until it hands back to WANDERING.
+	if data["state"] == State.OFFSTAGE or data["state"] == State.ENTERING:
+		return
 	var cfg = SCENES[_scene_for(id)]
 	var roll = randf()
 	var seat_path: String = ""
@@ -284,13 +390,37 @@ func _make_decision(id: String) -> void:
 		var wmax: Vector3 = cfg["wander_max"]
 		data["target"] = Vector3(randf_range(wmin.x, wmax.x), 0, randf_range(wmin.z, wmax.z))
 
+func _kessler_enter() -> void:
+	# Kramer-style entrance: stride briskly from the offstage park spot through
+	# the east wall, stopping just short of the couple. walk_v3 is tuned for
+	# WALK_SPEED, so the clip is sped up to match the pace (else he glides).
+	var data = actors["K"]
+	var cfg = SCENES["grocery"]
+	var target: Vector3 = cfg["spawn_k"]
+	if actors.has("A") and actors.has("B"):
+		var mid: Vector3 = (actors["A"]["node"].position + actors["B"]["node"].position) * 0.5
+		var away: Vector3 = data["node"].position - mid
+		away.y = 0
+		if away.length() > 0.1:
+			target = mid + away.normalized() * 1.8  # pull up just short of the pair
+	var wmin: Vector3 = cfg["wander_min"]
+	var wmax: Vector3 = cfg["wander_max"]
+	target = Vector3(clamp(target.x, wmin.x, wmax.x), 0, clamp(target.z, wmin.z, wmax.z))
+	data["target"] = target
+	data["state"] = State.ENTERING
+	data["speed"] = ENTRANCE_SPEED
+	data["anim"].speed_scale = ENTRANCE_SPEED / WALK_SPEED
+	# Keep _make_decision from interrupting the walk (it also early-returns on
+	# ENTERING; this covers the hand-off frame either way).
+	data["next_decision_time"] = Time.get_ticks_msec() + 15000
+
 func _handle_json_packet(json_text: String) -> void:
 	var json = JSON.new()
 	if json.parse(json_text) == OK:
 		var data = json.data
 		if typeof(data) == TYPE_DICTIONARY:
 			if data.get("event") == "play_audio":
-				play_line(data.get("file", ""), data.get("actor", "A"))
+				play_line(data.get("file", ""), data.get("actor", "A"), str(data.get("text", "")))
 			elif data.get("event") == "trigger_laugh":
 				play_laugh()
 			elif data.get("event") == "play_stinger":
@@ -300,10 +430,14 @@ func _handle_json_packet(json_text: String) -> void:
 			elif data.get("event") == "park_cam":
 				_park_exterior_cam(data.get("scene", "apartment"))
 
-func play_line(file_name: String, actor_id: String) -> void:
+func play_line(file_name: String, actor_id: String, text: String = "") -> void:
 	if not actors.has(actor_id):
 		print("Sitcom: Ignoring play_audio for unknown actor '", actor_id, "'")
 		return
+	# Kessler's first line of a grocery visit is his cue: burst in from offstage,
+	# already talking (the 3D voice approaching with him is part of the bit).
+	if actor_id == "K" and current_scene == "grocery" and actors["K"]["state"] == State.OFFSTAGE:
+		_kessler_enter()
 	_switch_camera(actor_id)
 
 	var path = "res://audio/" + file_name
@@ -331,7 +465,23 @@ func play_line(file_name: String, actor_id: String) -> void:
 		# still settles closed once the clip's duration (plus a margin) elapses.
 		actors[actor_id]["speaking"] = true
 		actors[actor_id]["speak_until"] = Time.get_ticks_msec() + int(stream.get_length() * 1000.0) + 800
+		# Only after the clip is confirmed playable — a skipped clip must never
+		# leave a stuck caption on screen.
+		_show_subtitle(actor_id, text)
 		print("Sitcom: Playing line for Actor ", actor_id, ": ", file_name)
+
+func _show_subtitle(actor_id: String, text: String) -> void:
+	# Empty text (old clients) or a missing label (scene without the UI) => no caption.
+	if subtitle_label == null or text == "":
+		return
+	subtitle_label.text = ACTOR_NAMES.get(actor_id, actor_id) + ": " + text
+	subtitle_label.visible = true
+	subtitle_actor = actor_id
+
+func _hide_subtitle() -> void:
+	if subtitle_label:
+		subtitle_label.visible = false
+	subtitle_actor = ""
 
 func _switch_camera(actor_id: String) -> void:
 	var cfg = SCENES[current_scene]
@@ -342,7 +492,9 @@ func _switch_camera(actor_id: String) -> void:
 	if cam == null:
 		_cut_to_wide()
 		return
-	if randf() < 0.7:
+	# An entrance is always covered by the actor's single — the camera tracking
+	# him striding into frame IS the shot; never roll wide over it.
+	if actors[actor_id]["state"] == State.ENTERING or randf() < 0.7:
 		# Fixed audience-side "single" that pans to the speaker (multi-cam
 		# sitcom style) — positioned past the open fourth wall, so an actor
 		# can never wander into it. Framing is handled by _update_active_camera.
@@ -375,6 +527,11 @@ func _play_clip(node_path: String, audio_path: String) -> void:
 func play_laugh() -> void:
 	_cut_to_wide()
 	_play_clip(SCENES[current_scene]["laugh"], "res://audio/laugh" + str(randi_range(1, 4)) + ".mp3")
+	# Everyone who isn't mid-line visibly enjoys the joke — durations are
+	# randomized so the pair doesn't bob in lockstep.
+	for id in actors:
+		if not actors[id]["speaking"] and actors[id]["state"] != State.OFFSTAGE:
+			_start_react(id, "laugh", randi_range(1100, 1700))
 
 func play_stinger() -> void:
 	# Between-skit musical sting: cut to the wide establishing shot.
@@ -430,8 +587,18 @@ func _teleport_to_scene(scene_id: String) -> void:
 	var cfg = SCENES[scene_id]
 	for id in actors:
 		var data = actors[id]
-		# Set-pinned actors (Kessler) stay home; only the couple travels.
+		# Set-pinned actors (Kessler) don't travel — every scene change re-parks
+		# them offstage so the next visit gets a fresh entrance.
 		if data.get("fixed_scene", "") != "":
+			var home = SCENES[data["fixed_scene"]]
+			data["node"].position = home.get("spawn_k_off", home.get("spawn_k", data["node"].position))
+			data["state"] = State.OFFSTAGE
+			data["target"] = data["node"].position
+			data["cur_anim"] = ""
+			data["speed"] = WALK_SPEED
+			data["anim"].speed_scale = 1.0
+			if data["body"]:
+				data["body"].position.y = 0.0
 			continue
 		var node: Node3D = data["node"]
 		node.position = cfg["spawn_a"] if id == "A" else cfg["spawn_b"]

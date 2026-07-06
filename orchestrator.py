@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import random
+from collections import deque
 from openai import OpenAI
 import edge_tts
 import websockets
@@ -12,7 +13,8 @@ from audio_timing import mp3_duration
 # LLM REQUIREMENTS (for swapping providers/models) — measured with the o200k_base
 # tokenizer (~±10%). generate_episode() is the ONLY LLM call: a single, STATELESS
 # request (system + one short user message, no history, no retrieval), one per episode.
-#   - Input : ~910 tok system prompt + ~20 tok user + ~10 overhead = ~940 tok (constant).
+#   - Input : ~925 tok system prompt + ~20-110 tok user (grows with the "Previously on"
+#             episode memory, up to 3 entries) + ~10 overhead = ~1030 tok worst case.
 #   - Output: ~400 (min 3x4) / ~750 (typical 4x6) / ~1230 (max 5x8 lines) tok; capped at
 #             max_tokens=2000. Per-episode total ~1.4k–2.2k tok.
 #   - Context window needed: input + reserved output ~= ~3k tok. A 4k model suffices,
@@ -33,6 +35,12 @@ VOICES = {
 	"A": "en-US-GuyNeural",
 	"B": "en-US-JennyNeural",
 	"K": "en-US-AndrewNeural",  # Kessler — eccentric grocery-store neighbor (distinct from Alan's Guy)
+}
+
+# Per-voice delivery tweaks passed straight to edge_tts.Communicate. Kessler talks
+# fast and a touch higher — in character for the eccentric neighbor.
+VOICE_STYLES = {
+	"K": {"rate": "+15%", "pitch": "+3Hz"},
 }
 
 # Actors the writer may use. Kessler ("K") is grocery-only; stray K lines in any
@@ -123,6 +131,7 @@ SYSTEM_PROMPT = (
 	"OUTPUT: Return STRICTLY a JSON object of this shape (no prose, no markdown):\n"
 	"{\n"
 	'  "theme": "a short, punchy angle on the topic",\n'
+	'  "callback": "the running bit you planted, 8 words or fewer",\n'
 	'  "skits": [\n'
 	'    { "scene": "coffee_shop", "lines": [ {"actor": "A", "line": "..."}, {"actor": "B", "line": "..."} ] }\n'
 	"  ]\n"
@@ -165,18 +174,32 @@ def _coerce_skit(skit):
 	return {"scene": scene, "lines": cleaned}
 
 
-async def generate_episode(client, topic):
+async def generate_episode(client, topic, memory=()):
 	"""Fetch a themed multi-skit episode from Groq.
 
-	Returns {"theme": str, "skits": [{"scene": str, "lines": [{actor, line}, ...]}, ...]} or None.
+	`memory` is a small rolling window of past episodes ({"theme", "callback"} dicts)
+	offered to the writer as optional callback material — the show's only continuity.
+
+	Returns {"theme": str, "callback": str, "skits": [{"scene": str, "lines": [...]}, ...]} or None.
 	"""
+	user_msg = f"Write the next episode. Topic: {topic}"
+	if memory:
+		prev = "; ".join(
+			f"\"{m['theme']}\"" + (f" (bit: {m['callback']})" if m["callback"] else "")
+			for m in memory
+		)
+		user_msg += (
+			f"\nPreviously on: {prev}. Optionally work in ONE quick, natural callback "
+			"to a past episode; skip it if it doesn't fit."
+		)
+
 	loop = asyncio.get_running_loop()
 	def call_groq():
 		completion = client.chat.completions.create(
 			model=MODEL_NAME,
 			messages=[
 				{"role": "system", "content": SYSTEM_PROMPT},
-				{"role": "user", "content": f"Write the next episode. Topic: {topic}"}
+				{"role": "user", "content": user_msg}
 			],
 			temperature=0.9,
 			max_tokens=2000,
@@ -192,10 +215,12 @@ async def generate_episode(client, topic):
 		# other single-key wrappers the model occasionally returns.
 		raw_skits = None
 		theme = ""
+		callback = ""
 		if isinstance(data, list):
 			raw_skits = data
 		elif isinstance(data, dict):
 			theme = str(data.get("theme", "")).strip()
+			callback = str(data.get("callback", "")).strip()[:80]
 			for key in ("skits", "episode", "scenes", "script"):
 				if isinstance(data.get(key), list):
 					raw_skits = data[key]
@@ -219,7 +244,7 @@ async def generate_episode(client, topic):
 		if not skits:
 			print("[Error] Episode had no usable skits.")
 			return None
-		return {"theme": theme or topic, "skits": skits}
+		return {"theme": theme or topic, "callback": callback, "skits": skits}
 	except Exception as e:
 		print(f"[Error] Failed to fetch episode from Groq: {e}")
 		return None
@@ -234,10 +259,11 @@ async def create_tts(text, voice_key, output_filename):
 	"""
 	filepath = os.path.join(GODOT_AUDIO_DIR, output_filename)
 	voice = VOICES.get(voice_key, VOICES["A"])
+	style = VOICE_STYLES.get(voice_key, {})
 
 	for attempt in range(2):
 		try:
-			communicate = edge_tts.Communicate(text, voice)
+			communicate = edge_tts.Communicate(text, voice, **style)
 			await communicate.save(filepath)
 			if os.path.getsize(filepath) > 512:  # a real clip is tens of KB
 				return True
@@ -249,8 +275,11 @@ async def create_tts(text, voice_key, output_filename):
 	print(f"[Error] Skipping line — no audio produced after retry: {output_filename}")
 	return False
 
-async def notify_engine(filename, actor_id):
-	"""Sends a WebSocket signal to the listening Godot client."""
+async def notify_engine(filename, actor_id, text=""):
+	"""Sends a WebSocket signal to the listening Godot client.
+
+	`text` is the spoken line; Godot shows it as an on-screen subtitle while
+	the actor speaks (older stages without the subtitle UI just ignore it)."""
 	max_retries = 3
 	for attempt in range(max_retries):
 		try:
@@ -258,7 +287,8 @@ async def notify_engine(filename, actor_id):
 				payload = {
 					"event": "play_audio",
 					"file": filename,
-					"actor": actor_id
+					"actor": actor_id,
+					"text": text
 				}
 				await websocket.send(json.dumps(payload))
 				await asyncio.sleep(1.0) # Hold for Godot to poll
@@ -314,7 +344,7 @@ async def play_line(entry, filename):
 
 	if not await create_tts(line, actor, filename):
 		return
-	if not await notify_engine(filename, actor):
+	if not await notify_engine(filename, actor, line):
 		print(f"[Error] Skipping line due to connection failure: {filename}")
 		return
 
@@ -340,21 +370,26 @@ async def main_loop():
 
 	episode_counter = 0
 	last_topic = None
+	topic_bag = []           # shuffle bag: every topic plays once before any repeats
+	memory = deque(maxlen=3)  # rolling "Previously on" — themes + running bits of recent episodes
 	current_scene = DEFAULT_SCENE  # Godot starts in the apartment
 
 	while True:
 		episode_counter += 1
 
-		# Pick a fresh topic, avoiding an immediate repeat.
-		topic = random.choice(TOPICS)
-		while last_topic is not None and topic == last_topic and len(TOPICS) > 1:
-			topic = random.choice(TOPICS)
+		# Draw from the shuffle bag; on refill, keep the seam from repeating the
+		# topic we just played by swapping it away from the top of the bag.
+		if not topic_bag:
+			topic_bag = random.sample(TOPICS, len(TOPICS))
+			if last_topic is not None and topic_bag[-1] == last_topic and len(topic_bag) > 1:
+				topic_bag[0], topic_bag[-1] = topic_bag[-1], topic_bag[0]
+		topic = topic_bag.pop()
 		last_topic = topic
 
 		print(f"\n--- Scripting Episode #{episode_counter} ---")
 		print(f"[Brain] Topic: {topic}")
 
-		episode = await generate_episode(client, topic)
+		episode = await generate_episode(client, topic, memory)
 		if not episode:
 			print("[Error] Invalid episode received. Retrying shortly...")
 			await asyncio.sleep(10)
@@ -387,6 +422,10 @@ async def main_loop():
 			for i, entry in enumerate(skit["lines"]):
 				filename = f"ep{episode_counter}_skit{s}_line{i}.mp3"
 				await play_line(entry, filename)
+
+		# Remember this episode (appended only after it actually played, so it
+		# never feeds into its own generation) for future "Previously on" hooks.
+		memory.append({"theme": episode["theme"], "callback": episode.get("callback", "")})
 
 		# Longer beat to separate whole episodes, with a sting to close the act.
 		print("[System] Episode finished. Rolling stinger into the break...")

@@ -31,25 +31,28 @@ STINGER_GAP = 6.0           # same-location act break; next skit opens as the st
 SCENE_TRANSITION_GAP = 5.5  # visual establishing shot into a new set (matches main.gd)
 
 # Each skit is tagged with a "scene" so this exercises the multi-set flow and the
-# establishing-shot transitions. Lines are (audio_file, actor, ends_with_laugh),
-# built from clips already in ./audio (actors alternate for camera variety). Skits
-# hop apartment -> coffee_shop -> grocery so both transitions fire.
+# establishing-shot transitions. Lines are (audio_file, actor, ends_with_laugh,
+# caption) — the caption doesn't match the replayed clip's real words, it just
+# exercises the subtitle overlay. Built from clips already in ./audio (actors
+# alternate for camera variety). Skits hop apartment -> coffee_shop -> grocery
+# so both transitions fire.
 SKITS = [
 	{"scene": "apartment", "lines": [
-		("skit_6_line_0.mp3", "A", False),
-		("skit_6_line_1.mp3", "B", False),
-		("skit_6_line_2.mp3", "A", False),
-		("skit_6_line_3.mp3", "B", True),
+		("skit_6_line_0.mp3", "A", False, "Smoke-test caption: Alan opens the show."),
+		("skit_6_line_1.mp3", "B", False, "Smoke-test caption: Bridgette answers back."),
+		("skit_6_line_2.mp3", "A", False, "Smoke-test caption: Alan keeps the bit going."),
+		("skit_6_line_3.mp3", "B", True, "Smoke-test caption: Bridgette lands the punchline."),
 	]},
 	{"scene": "coffee_shop", "lines": [
-		("skit_7_line_0.mp3", "A", False),
-		("skit_7_line_1.mp3", "B", False),
-		("skit_7_line_2.mp3", "A", True),
+		("skit_7_line_0.mp3", "A", False, "Smoke-test caption: Alan orders a double-double."),
+		("skit_7_line_1.mp3", "B", False, "Smoke-test caption: Bridgette eyes the Timbits."),
+		("skit_7_line_2.mp3", "A", True, "Smoke-test caption: Alan pays in loonies."),
 	]},
 	{"scene": "grocery", "lines": [
-		("skit_8_line_0.mp3", "B", False),
-		("skit_8_line_1.mp3", "K", False),  # Kessler crashes the aisle (grocery-only neighbor)
-		("skit_8_line_2.mp3", "A", True),
+		("skit_8_line_0.mp3", "B", False, "Smoke-test caption: Bridgette scans the aisle."),
+		# Kessler crashes the aisle (grocery-only neighbor)
+		("skit_8_line_1.mp3", "K", False, "Smoke-test caption: Kessler bursts in with a deal."),
+		("skit_8_line_2.mp3", "A", True, "Smoke-test caption: Alan surrenders to the sale."),
 	]},
 ]
 
@@ -85,10 +88,10 @@ async def main() -> None:
 				await wait(STINGER_GAP)
 
 			print(f"--- Skit {i} [{scene}] ---")
-			for file_name, actor, ends_with_laugh in skit["lines"]:
+			for file_name, actor, ends_with_laugh, caption in skit["lines"]:
 				dur = mp3_duration(os.path.join(AUDIO_DIR, file_name), default=4.5)
 				print(f"  [Actor {actor}] {file_name} ({dur:.1f}s)")
-				await send({"event": "play_audio", "file": file_name, "actor": actor})
+				await send({"event": "play_audio", "file": file_name, "actor": actor, "text": caption})
 				await wait(dur + LINE_PAUSE)
 				if ends_with_laugh:
 					print("  ~ laugh ~")

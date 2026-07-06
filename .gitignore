@@ -12,3 +12,6 @@ start_comedy.ps1
 # godot-ai MCP plugin (self-updating; reinstall from upstream, not tracked here)
 addons/godot_ai/
 godot-ai-LICENSE.txt
+
+# Python bytecode
+__pycache__/

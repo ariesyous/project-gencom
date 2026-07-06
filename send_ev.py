@@ -3,7 +3,7 @@
 Usage:
     python send_ev.py set_scene coffee_shop
     python send_ev.py park_cam grocery        # dev: hold a set's exterior cam for a facade still
-    python send_ev.py play_audio skit_7_line_0.mp3 A
+    python send_ev.py play_audio skit_7_line_0.mp3 A "optional subtitle text"
     python send_ev.py trigger_laugh
     python send_ev.py play_stinger
 """
@@ -26,6 +26,8 @@ def build_payload(argv):
     elif ev == "play_audio":
         payload["file"] = argv[2]
         payload["actor"] = argv[3] if len(argv) > 3 else "A"
+        if len(argv) > 4:
+            payload["text"] = argv[4]  # shown as an on-screen subtitle
     return payload
 
 
