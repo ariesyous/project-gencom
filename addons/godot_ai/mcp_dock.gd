@@ -40,8 +40,17 @@ const LogViewerScript := preload("res://addons/godot_ai/dock_panels/log_viewer.g
 const PortPickerPanelScript := preload("res://addons/godot_ai/dock_panels/port_picker_panel.gd")
 
 const DEV_MODE_SETTING := "godot_ai/dev_mode"
+## "Change the port + reconfigure your clients" guide. Surfaced from the crash
+## panel when a foreign process holds the HTTP port — the one piece of recovery
+## (per-client config rewrite) that doesn't fit in the inline crash body.
+## Resolved against the installed plugin version at click time (see
+## `_port_conflict_docs_url`) so a shipped build opens the guide as it shipped,
+## not tip-of-main, which may have drifted from that build's UI.
+const PORT_CONFLICT_DOCS_PATH := "docs/port-conflicts.md"
+const REPO_BLOB_BASE := "https://github.com/hi-godot/godot-ai/blob"
 const CLIENT_STATUS_REFRESH_COOLDOWN_MSEC := 15 * 1000
 const CLIENT_STATUS_REFRESH_TIMEOUT_MSEC := 30 * 1000
+const CLIENT_ACTION_TIMEOUT_MSEC := 30 * 1000
 static var COLOR_MUTED := Color(0.7, 0.7, 0.7)
 static var COLOR_HEADER := Color(0.95, 0.95, 0.95)
 ## Used for "in-progress" / "stale, action needed" UI: the startup-grace
@@ -60,15 +69,16 @@ var _status_icon: ColorRect
 var _status_label: Label
 var _client_grid: VBoxContainer
 var _client_configure_all_btn: Button
+var _client_empty_cta_btn: Button
 var _clients_summary_label: Label
 var _clients_window: Window
 var _dev_mode_toggle: CheckButton
 var _install_label: Label
 
-# Settings tab (secondary window, Tab 2) — domain-exclusion UI for clients
+# Tools tab (secondary window, Tab 2) — domain-exclusion UI for clients
 # that cap total tool count (Antigravity: 100). Pending set is mutated by
 # checkbox clicks; saved set reflects what the spawned server actually
-# sees. `Apply & Restart Server` writes pending → setting and triggers a
+# sees. `Apply and Restart Server` writes pending → setting and triggers a
 # plugin reload so the new server comes up with the trimmed list.
 var _tools_pending_excluded: PackedStringArray = PackedStringArray()
 var _tools_saved_excluded: PackedStringArray = PackedStringArray()
@@ -147,23 +157,24 @@ static var _orphaned_client_status_refresh_threads: Array[Thread] = []
 
 ## Per-row worker state for Configure / Remove. Issue #239: shelling out
 ## to a hung CLI on main hangs the editor. We dispatch each click to its
-## own thread (one slot per client) and apply the result via call_deferred
-## once the subprocess returns or the wall-clock budget in McpCliExec
-## kicks in. The buttons stay disabled while the slot is busy so the user
-## can't queue a re-click on the same row.
+## own thread (one slot per client), then `_process` reaps completed workers
+## and applies returned payloads on main. The buttons stay disabled while
+## the slot is busy so the user can't queue a re-click on the same row.
 ##
 ## Per-client (not single-slot) so Configure-all can fan out — the
 ## workers are independent, only the row UI is shared, and McpCliExec
 ## bounds the wall-clock for each.
 ##
-## No orphan-thread list (unlike the refresh worker): action threads
-## never get abandoned mid-flight. McpCliExec's wall-clock budget caps
-## the worst case at ~10s, so the `_exit_tree` / `McpUpdateManager`
-## install-time drain blocks briefly and finishes — there's no path that
-## "gives up" on an action thread the way `_abandon_client_status_refresh_thread`
-## does for the refresh worker.
+## A watchdog can abandon a slot when a worker fails to report completion.
+## The thread object is retained in `_orphaned_client_action_threads` until
+## it finishes so GDScript does not destroy a live Thread object.
 var _client_action_threads: Dictionary = {}
 var _client_action_generations: Dictionary = {}
+var _client_action_started_msec: Dictionary = {}
+var _client_action_names: Dictionary = {}
+## Timed-out Configure/Remove workers are abandoned but retained here until
+## they finish, so GDScript does not destroy a live Thread object.
+static var _orphaned_client_action_threads: Array[Thread] = []
 
 # Dev-mode only
 var _dev_section: VBoxContainer
@@ -193,6 +204,11 @@ var _crash_panel: VBoxContainer
 var _crash_output: RichTextLabel
 var _crash_restart_btn: Button
 var _crash_reload_btn: Button
+## Help link — visible only for the genuinely-foreign-occupant INCOMPATIBLE
+## case (no `can_recover_incompatible` proof). The inline body names a free
+## port; this button carries the per-client reconfigure steps that don't fit
+## inline. See `PORT_CONFLICT_DOCS` and `_update_crash_panel`.
+var _crash_docs_btn: Button
 ## Port-picker escape hatch — visible inside the crash panel when the root
 ## cause is port contention (PORT_EXCLUDED or FOREIGN_PORT). The dock writes
 ## the EditorSetting and reloads the plugin in response to the panel's
@@ -238,10 +254,14 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	_prune_orphaned_client_status_refresh_threads()
+	_prune_orphaned_client_action_threads()
+	_poll_completed_client_status_refresh_thread()
+	_poll_completed_client_action_threads()
+	_check_client_status_refresh_timeout()
+	_check_client_action_timeouts()
 	if _connection == null:
 		return
-	_prune_orphaned_client_status_refresh_threads()
-	_check_client_status_refresh_timeout()
 	_retry_deferred_client_status_refresh()
 	_update_status()
 	if _log_viewer != null and _log_viewer.visible:
@@ -275,6 +295,8 @@ func _exit_tree() -> void:
 ## drains directly because it has additional state-machine work
 ## (SHUTTING_DOWN sticky-set) that the install-time path must NOT inherit.
 func prepare_for_self_update_drain() -> void:
+	_poll_completed_client_status_refresh_thread()
+	_poll_completed_client_action_threads()
 	_drain_client_status_refresh_workers()
 	_drain_client_action_workers()
 
@@ -309,13 +331,13 @@ func _drain_client_action_workers() -> void:
 	## plugin disable / install-update path reloads our script class, so any
 	## live Thread must finish before its slot is GC'd or we hit
 	## `~Thread … destroyed without its completion having been realized` →
-	## VM corruption. Bounded by `McpCliExec` wall-clock budgets, so the
-	## worst case is a ~10s blocking drain, vs. an unbounded SIGSEGV.
+	## VM corruption. Normal UI recovery is handled by the per-row watchdog;
+	## teardown still blocks because GDScript's Thread API has no kill/timeout
+	## primitive and destroying a live Thread corrupts the VM.
 	##
-	## Generation-bumped per-row so any pending `call_deferred(
-	## "_apply_client_action_result")` from a worker that finished after we
-	## started draining detects the generation mismatch and short-circuits
-	## without touching freed UI state.
+	## Generation-bumped per-row so any result from a worker that finished
+	## after we started draining detects the generation mismatch and
+	## short-circuits without touching freed UI state.
 	##
 	## After draining, restore the row UI for any in-flight rows: bare
 	## `_client_action_threads.clear()` would leave the dock stuck showing
@@ -328,6 +350,8 @@ func _drain_client_action_workers() -> void:
 		if t != null:
 			t.wait_to_finish()
 		_client_action_generations[client_id] = int(_client_action_generations.get(client_id, 0)) + 1
+		_client_action_started_msec.erase(client_id)
+		_client_action_names.erase(client_id)
 		_finalize_action_buttons(String(client_id))
 		var row: Dictionary = _client_rows.get(String(client_id), {})
 		if not row.is_empty():
@@ -337,6 +361,71 @@ func _drain_client_action_workers() -> void:
 				""
 			)
 	_client_action_threads.clear()
+	for thread in _orphaned_client_action_threads:
+		if thread != null:
+			thread.wait_to_finish()
+	_orphaned_client_action_threads.clear()
+	_client_action_started_msec.clear()
+	_client_action_names.clear()
+
+
+func _check_client_action_timeouts() -> void:
+	var now := Time.get_ticks_msec()
+	for client_id in _client_action_threads.keys():
+		if not _client_action_started_msec.has(client_id):
+			continue
+		var started := int(_client_action_started_msec.get(client_id, 0))
+		if now - started >= CLIENT_ACTION_TIMEOUT_MSEC:
+			_abandon_client_action_thread(String(client_id))
+
+
+func _abandon_client_action_thread(client_id: String) -> void:
+	if not _client_action_threads.has(client_id):
+		return
+	var thread: Thread = _client_action_threads[client_id]
+	var elapsed := Time.get_ticks_msec() - int(_client_action_started_msec.get(client_id, Time.get_ticks_msec()))
+	var worker_alive := thread != null and thread.is_alive()
+	if thread != null:
+		_orphaned_client_action_threads.append(thread)
+	_client_action_threads.erase(client_id)
+	_client_action_started_msec.erase(client_id)
+	var action := str(_client_action_names.get(client_id, "configure"))
+	_client_action_names.erase(client_id)
+	_client_action_generations[client_id] = int(_client_action_generations.get(client_id, 0)) + 1
+	_finalize_action_buttons(client_id)
+	print("MCP | client action timed out: client=%s action=%s elapsed_ms=%d worker_alive=%s" % [
+		client_id,
+		action,
+		elapsed,
+		str(worker_alive),
+	])
+	var label := "Remove" if action == "remove" else "Configure"
+	_apply_row_status(
+		client_id,
+		Client.Status.ERROR,
+		"%s did not report completion in time; refreshing current status." % label
+	)
+	_refresh_clients_summary()
+	if is_inside_tree():
+		_request_client_status_refresh(true)
+
+
+func _prune_orphaned_client_action_threads() -> void:
+	var completed_orphan := false
+	for i in range(_orphaned_client_action_threads.size() - 1, -1, -1):
+		var thread := _orphaned_client_action_threads[i]
+		if thread == null:
+			_orphaned_client_action_threads.remove_at(i)
+		elif not thread.is_alive():
+			thread.wait_to_finish()
+			_orphaned_client_action_threads.remove_at(i)
+			completed_orphan = true
+	if completed_orphan and is_inside_tree():
+		_request_client_action_completion_refresh()
+
+
+func _request_client_action_completion_refresh() -> void:
+	_request_client_status_refresh(true)
 
 
 func _notification(what: int) -> void:
@@ -473,6 +562,13 @@ func _build_ui() -> void:
 	_crash_reload_btn.pressed.connect(_on_reload_plugin)
 	_crash_panel.add_child(_crash_reload_btn)
 
+	_crash_docs_btn = Button.new()
+	_crash_docs_btn.text = "How to change the port"
+	_crash_docs_btn.tooltip_text = "Open the guide: change godot_ai/http_port and reconfigure your MCP clients"
+	_crash_docs_btn.visible = false
+	_crash_docs_btn.pressed.connect(func(): OS.shell_open(_port_conflict_docs_url()))
+	_crash_panel.add_child(_crash_docs_btn)
+
 	_crash_panel.add_child(HSeparator.new())
 	add_child(_crash_panel)
 
@@ -487,7 +583,7 @@ func _build_ui() -> void:
 	_update_label = Label.new()
 	_update_label.add_theme_font_size_override("font_size", 15)
 	_update_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-	## Wrap long banner text (e.g. the < 4.4 manual-update guidance) instead
+	## Wrap long banner text (e.g. the < 4.5 support-floor guidance) instead
 	## of letting a single line stretch the whole dock wide. The dock is a
 	## fixed-width side panel, so constrain horizontally and wrap.
 	_update_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -558,30 +654,45 @@ func _build_ui() -> void:
 	add_child(HSeparator.new())
 
 	# --- Clients ---
-	var clients_row := HBoxContainer.new()
-	clients_row.add_theme_constant_override("separation", 8)
+	var clients_header_row := HBoxContainer.new()
+	clients_header_row.add_theme_constant_override("separation", 8)
 
 	var clients_header := _make_header("Clients")
-	clients_row.add_child(clients_header)
+	clients_header_row.add_child(clients_header)
 
 	_clients_summary_label = Label.new()
 	_clients_summary_label.add_theme_color_override("font_color", COLOR_MUTED)
+	_clients_summary_label.clip_text = true
+	_clients_summary_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_clients_summary_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	clients_row.add_child(_clients_summary_label)
+	clients_header_row.add_child(_clients_summary_label)
+
+	var clients_actions := HFlowContainer.new()
+	clients_actions.add_theme_constant_override("h_separation", 8)
+	clients_actions.add_theme_constant_override("v_separation", 4)
 
 	var clients_refresh_btn := Button.new()
 	clients_refresh_btn.text = "Refresh"
 	clients_refresh_btn.tooltip_text = "Refresh client status in the background. Cached status stays visible while checks run."
 	clients_refresh_btn.pressed.connect(_on_refresh_clients_pressed)
-	clients_row.add_child(clients_refresh_btn)
+	clients_actions.add_child(clients_refresh_btn)
 
 	var clients_open_btn := Button.new()
-	clients_open_btn.text = "Clients & Settings"
-	clients_open_btn.tooltip_text = "Open the MCP settings window — configure AI clients, choose telemetry preferences, or disable tool domains to fit under a client's hard tool-count cap (e.g. Antigravity's 100)."
+	clients_open_btn.text = "Clients & Tools"
+	clients_open_btn.tooltip_text = "Open the Clients & Tools window — configure AI clients, choose telemetry preferences, or disable tool domains to fit under a client's hard tool-count cap (e.g. Antigravity's 100)."
 	clients_open_btn.pressed.connect(_on_open_clients_window)
-	clients_row.add_child(clients_open_btn)
+	clients_actions.add_child(clients_open_btn)
 
-	add_child(clients_row)
+	add_child(clients_header_row)
+	add_child(clients_actions)
+
+	_client_empty_cta_btn = Button.new()
+	_client_empty_cta_btn.text = "Configure an AI client ->"
+	_client_empty_cta_btn.tooltip_text = "Open the Clients tab to configure an AI coding client for this Godot AI server."
+	_client_empty_cta_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_client_empty_cta_btn.visible = false
+	_client_empty_cta_btn.pressed.connect(_on_open_clients_window)
+	add_child(_client_empty_cta_btn)
 
 	# Drift banner — hidden until a sweep finds at least one mismatched client.
 	_drift_banner = VBoxContainer.new()
@@ -600,7 +711,7 @@ func _build_ui() -> void:
 	add_child(_drift_banner)
 
 	_clients_window = Window.new()
-	_clients_window.title = "MCP Clients & Settings"
+	_clients_window.title = "Godot AI"
 	## `Vector2i * float` yields Vector2; wrap the result back to Vector2i.
 	_clients_window.min_size = Vector2i(Vector2(560, 460) * EditorInterface.get_editor_scale())
 	_clients_window.visible = false
@@ -758,7 +869,7 @@ func _build_client_row(client_id: String) -> void:
 # --- Status updates ---
 
 func _update_status() -> void:
-	var connected: bool = _connection.is_connected
+	var connected: bool = _connection != null and _connection.is_connected
 	## During plugin self-update there's a brief window where this dock
 	## script is already the new version (Godot hot-reloads scripts on
 	## file change) but `_plugin` is still the old `EditorPlugin` instance
@@ -785,7 +896,7 @@ func _update_status() -> void:
 		status_text = "Restarting server..."
 		status_color = COLOR_AMBER
 	elif connected:
-		status_text = "Connected"
+		status_text = _connected_status_text()
 		status_color = Color.GREEN
 	elif state == ServerStateScript.CRASHED:
 		var exit_ms: int = server_status.get("exit_ms", 0)
@@ -858,6 +969,15 @@ func _update_crash_panel(server_status: Dictionary) -> void:
 			not show_recovery_restart
 			and state != ServerStateScript.INCOMPATIBLE
 		)
+	## Docs link only for the genuinely-foreign occupant: a recoverable
+	## (older godot-ai) server gets Restart Server instead, and the inline
+	## body already names a free port — the link carries the per-client
+	## reconfigure steps that don't fit inline.
+	if _crash_docs_btn != null:
+		_crash_docs_btn.visible = (
+			state == ServerStateScript.INCOMPATIBLE
+			and not bool(server_status.get("can_recover_incompatible", false))
+		)
 
 	var port_picker_visible := (
 		state == ServerStateScript.PORT_EXCLUDED
@@ -887,9 +1007,16 @@ static func _crash_body_for_state(state: int, server_status: Dictionary = {}) ->
 				if not message.is_empty():
 					return "%s Click Restart Server below to replace it with godot-ai v%s." % [message, expected]
 				return "Port %d is occupied by an older godot-ai server. Click Restart Server below to replace it with godot-ai v%s." % [port, expected]
+			## Genuinely foreign occupant (no recovery proof). Name a concrete
+			## free port so the user doesn't have to hunt for one, and let the
+			## crash panel's "How to change the port" link carry the per-client
+			## reconfigure steps. `suggest_free_port` already routes through the
+			## Windows reservation table, so the named port won't itself fail
+			## with WinError 10013.
+			var hint := _free_port_hint(port)
 			if not message.is_empty():
-				return message
-			return "Port %d is occupied by an incompatible server. Stop it or change both HTTP and WS ports." % port
+				return "%s %s" % [message, hint]
+			return "Port %d is occupied by an incompatible server. %s" % [port, hint]
 		ServerStateScript.FOREIGN_PORT:
 			return "Another process is already bound to port %d. Pick a free port or stop the other process." % port
 		ServerStateScript.CRASHED:
@@ -905,6 +1032,31 @@ static func _crash_body_for_state(state: int, server_status: Dictionary = {}) ->
 			return "No godot-ai server found. Install `uv` via the Setup panel above, or run `pip install godot-ai`."
 		_:
 			return ""
+
+
+## One sentence naming concrete free ports for the user to switch to. Names
+## BOTH http and ws: this branch also fires for an incompatible godot-ai
+## server we can't prove we own, which commonly holds both ports — moving only
+## http would then leave the new server unable to bind ws. Both suggestions are
+## routed through `suggest_free_port` so they clear Windows' winnat reservation
+## table (no point suggesting a port that 10013s on bind). Only the http port
+## reaches client configs; the ws port is server↔plugin, hence the wording.
+## The per-client reconfigure steps live behind the crash panel's docs link.
+static func _free_port_hint(port: int) -> String:
+	var free_http := ClientConfigurator.suggest_free_port(port + 1)
+	var free_ws := ClientConfigurator.suggest_free_port(ClientConfigurator.ws_port() + 1)
+	return "Ports %d (HTTP) and %d (WS) are free — set `godot_ai/http_port` and `godot_ai/ws_port` in Editor Settings, then update your client config with the new HTTP port (How to change the port, below)." % [free_http, free_ws]
+
+
+## URL for the port-conflict guide, pinned to the release tag that matches the
+## installed plugin version (releases are tagged `v<version>`). The crash-panel
+## button only exists in builds that ship `docs/port-conflicts.md`, so the
+## versioned ref always resolves — and a shipped build never points users at a
+## tip-of-main guide that has drifted from its own UI.
+static func _port_conflict_docs_url() -> String:
+	var version := ClientConfigurator.get_plugin_version()
+	var git_ref := ("v%s" % version) if not version.is_empty() else "main"
+	return "%s/%s/%s" % [REPO_BLOB_BASE, git_ref, PORT_CONFLICT_DOCS_PATH]
 
 
 ## Build the mixed-state banner. Hidden until `_refresh_mixed_state_banner`
@@ -981,10 +1133,17 @@ func _apply_mixed_state_banner_diagnostic(diag: Dictionary) -> void:
 
 
 ## Signal handler for the extracted LogViewer — the panel owns its own
-## display visibility, the dock owns dispatcher logging routing.
+## display visibility, the dock owns logging routing. Routes to BOTH the
+## dispatcher (gates [recv]/[send] recording) and the log buffer's console
+## echo — the connection logs [event]/[defer] lines directly to the buffer,
+## bypassing the dispatcher, so gating only `mcp_logging` left the console
+## spamming with the toggle off (#626). Ring recording is unaffected, so
+## the dock's log panel keeps working while the console stays quiet.
 func _on_log_logging_enabled_changed(enabled: bool) -> void:
 	if _connection and _connection.dispatcher:
 		_connection.dispatcher.mcp_logging = enabled
+	if _log_buffer != null:
+		_log_buffer.enabled = enabled
 
 
 ## Signal handler for the extracted PortPickerPanel — the panel range-validates
@@ -1297,7 +1456,9 @@ func _refresh_setup_status() -> void:
 	# User mode — check for uv
 	var uv_version := ClientConfigurator.check_uv_version()
 	if not uv_version.is_empty():
-		_setup_container.add_child(_make_status_row("uv", uv_version, Color.GREEN))
+		var compact_uv_version := _compact_uv_version_text(uv_version)
+		var uv_tooltip := uv_version if compact_uv_version != uv_version else ""
+		_setup_container.add_child(_make_status_row("uv", compact_uv_version, Color.GREEN, uv_tooltip))
 		## Build the Server row with a placeholder label we can update every
 		## frame. `_refresh_server_version_label` replaces the text + color
 		## once `McpConnection.server_version` lands via `handshake_ack`, and
@@ -1358,19 +1519,39 @@ func _resolve_plugin_symlink_target() -> String:
 	return target
 
 
-func _make_status_row(label_text: String, value_text: String, value_color: Color) -> HBoxContainer:
+static func _compact_uv_version_text(uv_version: String) -> String:
+	var text := uv_version.strip_edges()
+	if text.ends_with(")"):
+		var metadata_start := text.rfind(" (")
+		if metadata_start >= 0:
+			return text.substr(0, metadata_start).strip_edges()
+	return text
+
+
+func _make_status_row(
+	label_text: String,
+	value_text: String,
+	value_color: Color,
+	tooltip_text: String = ""
+) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
+	if not tooltip_text.is_empty():
+		row.tooltip_text = tooltip_text
 
 	var label := Label.new()
 	label.text = label_text
 	label.add_theme_color_override("font_color", COLOR_MUTED)
 	label.custom_minimum_size.x = 60
+	if not tooltip_text.is_empty():
+		label.tooltip_text = tooltip_text
 	row.add_child(label)
 
 	var value := Label.new()
 	value.text = value_text
 	value.add_theme_color_override("font_color", value_color)
+	if not tooltip_text.is_empty():
+		value.tooltip_text = tooltip_text
 	row.add_child(value)
 
 	return row
@@ -1480,6 +1661,14 @@ func _update_dev_section_buttons() -> void:
 		_dev_stop_btn.tooltip_text = stop_state["tooltip"]
 
 
+func _client_status_refresh_has_completed() -> bool:
+	return _last_client_status_refresh_completed_msec > 0
+
+
+func _connected_status_text() -> String:
+	return "Server connected"
+
+
 func _on_install_uv() -> void:
 	match OS.get_name():
 		"Windows":
@@ -1548,28 +1737,65 @@ func _dispatch_client_action(client_id: String, action: String) -> void:
 	_client_action_generations[client_id] = generation
 	var thread := Thread.new()
 	_client_action_threads[client_id] = thread
+	_client_action_started_msec[client_id] = Time.get_ticks_msec()
+	_client_action_names[client_id] = action
 	var err := thread.start(
 		Callable(self, "_run_client_action_worker").bind(client_id, action, server_url, generation)
 	)
 	if err != OK:
 		_client_action_threads.erase(client_id)
+		_client_action_started_msec.erase(client_id)
+		_client_action_names.erase(client_id)
 		_finalize_action_buttons(client_id)
 		_apply_row_status(client_id, Client.Status.ERROR, "couldn't start worker thread")
 		_refresh_clients_summary()
 
 
-func _run_client_action_worker(client_id: String, action: String, server_url: String, generation: int) -> void:
+func _run_client_action_worker(client_id: String, action: String, server_url: String, generation: int) -> Dictionary:
 	var result: Dictionary
 	if action == "remove":
 		result = ClientConfigurator.remove(client_id, server_url)
 	else:
 		result = ClientConfigurator.configure(client_id, server_url)
-	if _refresh_state != ClientRefreshStateScript.SHUTTING_DOWN:
-		call_deferred("_apply_client_action_result", client_id, action, result, generation)
+	return {
+		"client_id": client_id,
+		"action": action,
+		"result": result,
+		"generation": generation,
+	}
+
+
+func _poll_completed_client_action_threads() -> void:
+	for client_id in _client_action_threads.keys():
+		var thread: Thread = _client_action_threads[client_id]
+		if thread == null or thread.is_alive():
+			continue
+		var payload: Variant = thread.wait_to_finish()
+		_client_action_threads[client_id] = null
+		if payload is Dictionary:
+			var data := payload as Dictionary
+			var result: Dictionary = data.get("result", {})
+			_apply_client_action_result(
+				String(data.get("client_id", client_id)),
+				String(data.get("action", _client_action_names.get(client_id, "configure"))),
+				result,
+				int(data.get("generation", _client_action_generations.get(client_id, 0)))
+			)
+		else:
+			_apply_client_action_result(
+				String(client_id),
+				String(_client_action_names.get(client_id, "configure")),
+				{"status": "error", "message": "worker returned no result"},
+				int(_client_action_generations.get(client_id, 0))
+			)
 
 
 func _apply_client_action_result(client_id: String, action: String, result: Dictionary, generation: int) -> void:
 	if int(_client_action_generations.get(client_id, 0)) != generation:
+		if _client_action_threads.get(client_id, null) == null:
+			_client_action_threads.erase(client_id)
+			_client_action_started_msec.erase(client_id)
+			_client_action_names.erase(client_id)
 		return
 	if _refresh_state == ClientRefreshStateScript.SHUTTING_DOWN:
 		return
@@ -1577,7 +1803,9 @@ func _apply_client_action_result(client_id: String, action: String, result: Dict
 		var t: Thread = _client_action_threads[client_id]
 		if t != null:
 			t.wait_to_finish()
-		_client_action_threads.erase(client_id)
+	_client_action_threads.erase(client_id)
+	_client_action_started_msec.erase(client_id)
+	_client_action_names.erase(client_id)
 	_finalize_action_buttons(client_id)
 	if _server_blocks_client_health():
 		_apply_row_status(client_id, Client.Status.ERROR, _server_blocked_client_message())
@@ -1645,7 +1873,7 @@ func _on_configure_all_clients() -> void:
 			_apply_row_status(String(client_id), Client.Status.ERROR, _server_blocked_client_message())
 		_refresh_clients_summary()
 		return
-	if ClientRefreshStateScript.has_worker_alive(_refresh_state):
+	if ClientRefreshStateScript.should_disable_client_actions(_refresh_state):
 		return
 	for client_id in _client_rows:
 		var status: Client.Status = _client_rows[client_id].get("status", Client.Status.NOT_CONFIGURED)
@@ -1700,7 +1928,7 @@ func _build_tools_tab(tabs: TabContainer) -> void:
 	var tools_tab := VBoxContainer.new()
 	tools_tab.add_theme_constant_override("separation", 8)
 	var tools_margin := _build_margin_container()
-	tools_margin.name = "Settings"
+	tools_margin.name = "Tools"
 	tools_margin.add_child(tools_tab)
 	tabs.add_child(tools_margin)
 
@@ -1793,7 +2021,7 @@ func _build_tools_tab(tabs: TabContainer) -> void:
 	footer.add_theme_constant_override("separation", 8)
 
 	_tools_apply_btn = Button.new()
-	_tools_apply_btn.text = "Apply && Restart Server"
+	_tools_apply_btn.text = "Apply and Restart Server"
 	_tools_apply_btn.tooltip_text = "Save the excluded list to Editor Settings and reload the plugin so the server respawns with --exclude-domains."
 	_tools_apply_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_tools_apply_btn.pressed.connect(_on_tools_apply)
@@ -1976,8 +2204,11 @@ func _refresh_clients_summary() -> void:
 		)
 	_clients_summary_label.text = text
 	if _client_configure_all_btn != null:
-		_client_configure_all_btn.disabled = ClientRefreshStateScript.has_worker_alive(_refresh_state)
+		_client_configure_all_btn.disabled = ClientRefreshStateScript.should_disable_client_actions(_refresh_state)
+	if _client_empty_cta_btn != null:
+		_client_empty_cta_btn.visible = configured == 0 and _client_status_refresh_has_completed()
 	_refresh_drift_banner(mismatched_ids)
+	_update_status()
 
 
 func _show_manual_command_for(client_id: String) -> void:
@@ -2167,8 +2398,8 @@ func _warm_strategy_bytecode() -> void:
 
 func _begin_client_status_refresh_run() -> int:
 	## Marks a refresh as starting and returns the new generation token.
-	## Generation is bumped here (not at completion) so that a worker callback
-	## arriving after `_abandon_client_status_refresh_thread` or `_exit_tree`
+	## Generation is bumped here (not at completion) so that a worker result
+	## reaped after `_abandon_client_status_refresh_thread` or `_exit_tree`
 	## fires can be detected as stale via generation mismatch.
 	_refresh_state = ClientRefreshStateScript.RUNNING
 	_client_status_refresh_pending = false
@@ -2181,7 +2412,7 @@ func _begin_client_status_refresh_run() -> int:
 
 func _finalize_completed_refresh() -> void:
 	## Stamps cooldown and clears in-flight state. Called at the end of every
-	## refresh that successfully applied results — the worker callback path
+	## refresh that successfully applied results — the worker reaping path
 	## and the no-CLI fast path in `_perform_initial_client_status_refresh`.
 	_last_client_status_refresh_completed_msec = Time.get_ticks_msec()
 	if _refresh_state != ClientRefreshStateScript.SHUTTING_DOWN:
@@ -2308,7 +2539,7 @@ func _retry_deferred_client_status_refresh() -> void:
 		_request_client_status_refresh(force)
 
 
-func _run_client_status_refresh_worker(client_probes: Array[Dictionary], server_url: String, generation: int) -> void:
+func _run_client_status_refresh_worker(client_probes: Array[Dictionary], server_url: String, generation: int) -> Dictionary:
 	var results: Dictionary = {}
 	for probe in client_probes:
 		var client_id := String(probe.get("id", ""))
@@ -2325,8 +2556,25 @@ func _run_client_status_refresh_worker(client_probes: Array[Dictionary], server_
 			"installed": installed,
 			"error_msg": details.get("error_msg", ""),
 		}
-	if _refresh_state != ClientRefreshStateScript.SHUTTING_DOWN:
-		call_deferred("_apply_client_status_refresh_results", results, generation)
+	return {"results": results, "generation": generation}
+
+
+func _poll_completed_client_status_refresh_thread() -> void:
+	if _client_status_refresh_thread == null:
+		return
+	if _client_status_refresh_thread.is_alive():
+		return
+	var payload: Variant = _client_status_refresh_thread.wait_to_finish()
+	_client_status_refresh_thread = null
+	if payload is Dictionary:
+		var data := payload as Dictionary
+		var results: Dictionary = data.get("results", {})
+		_apply_client_status_refresh_results(
+			results,
+			int(data.get("generation", _client_status_refresh_generation))
+		)
+	else:
+		_apply_client_status_refresh_results({}, _client_status_refresh_generation)
 
 
 func _apply_client_status_refresh_results(results: Dictionary, generation: int) -> void:
@@ -2491,6 +2739,5 @@ func _on_install_state_changed(state: Dictionary) -> void:
 	if state.has("banner_visible") and _update_banner != null:
 		_update_banner.visible = bool(state["banner_visible"])
 	if String(state.get("outcome", "")) == "success" and _update_label != null:
-		## Visual confirmation for the pre-4.4 "Updated! Restart the editor."
-		## terminal state — the only outcome the manager paints green for.
+		## Visual confirmation for successful terminal update states.
 		_update_label.add_theme_color_override("font_color", Color.GREEN)

@@ -300,6 +300,15 @@ func _set_incompatible_server(live: Dictionary, expected_version: String, port: 
 	var proof_name := str(proof.get("proof", ""))
 	_can_recover_incompatible = not proof_name.is_empty()
 	print("MCP | proof: %s" % (proof_name if _can_recover_incompatible else "(none)"))
+	if not _can_recover_incompatible:
+		## Non-recoverable: a foreign / unprovable occupant holds the port and
+		## we have no ownership proof, so we must NOT kill it — surface a
+		## concrete free port the user can switch to instead (the same hint
+		## the dock crash body renders). Logging it to the editor output also
+		## lets `ci-stale-server-smoke --mode foreign` assert this upstream
+		## classification from CI. Reservation-aware on Windows.
+		var suggested := ClientConfigurator.suggest_free_port(port + 1)
+		print("MCP | port %d occupant not recoverable (no ownership proof); suggested free port %d (set godot_ai/http_port)" % [port, suggested])
 	_host._refresh_dock_client_statuses()
 
 
@@ -371,14 +380,18 @@ static func _live_package_path_for_message(live: Dictionary) -> String:
 
 ## Sets GODOT_AI_DISABLE_TELEMETRY in the process environment for the
 ## upcoming OS.create_process call if: (a) neither GODOT_AI_DISABLE_TELEMETRY
-## nor DISABLE_TELEMETRY is already set, and (b) the EditorSettings key
-## "godot_ai/telemetry_enabled" is set to false. Returns true if the var was
+## nor DISABLE_TELEMETRY is already set to a *truthy* value (a falsey "0" does
+## NOT count — it must not suppress a dock UI opt-out), and (b) the effective
+## McpSettings.telemetry_enabled() is false. Returns true if the var was
 ## injected so the caller can unset it after spawning.
 func _inject_telemetry_env() -> bool:
-	## Guard: if the user or CI already set an env var (even to "false"), leave
-	## it alone. McpSettings.telemetry_enabled() only reads the EditorSetting
-	## when no env var overrides are present.
-	if OS.has_environment("GODOT_AI_DISABLE_TELEMETRY") or OS.has_environment("DISABLE_TELEMETRY"):
+	## If telemetry is already disabled by a *truthy* env var, leave the env as
+	## the user/CI set it — the post-spawn cleanup unsets what we inject, so
+	## injecting here would strip their own var from the editor process. A
+	## *falsey* value (e.g. DISABLE_TELEMETRY=0) must NOT count as "handled":
+	## fall through so a dock UI opt-out still reaches the spawned server. The
+	## truthy test mirrors McpSettings.telemetry_enabled() and the Python server.
+	if McpSettings.env_truthy("GODOT_AI_DISABLE_TELEMETRY") or McpSettings.env_truthy("DISABLE_TELEMETRY"):
 		return false
 	if not McpSettings.telemetry_enabled():
 		OS.set_environment("GODOT_AI_DISABLE_TELEMETRY", "true")

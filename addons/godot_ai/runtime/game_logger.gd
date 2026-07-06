@@ -3,17 +3,10 @@ extends Logger
 
 ## Game-process Logger subclass.
 ##
-## NOTE: deliberately no `class_name` — `extends Logger` requires the Logger
-## class which Godot only exposes from 4.5+. This file lives in the
-## `.gdignore`'d `runtime/loggers/` folder so Godot's editor filesystem scan
-## skips it entirely — on Godot < 4.5 it is never parsed, so it emits no
-## "Could not find base class Logger" error (it used to, before #475's
-## follow-up). game_helper.gd builds it from source at runtime via
-## `logger_loader.gd` and only calls OS.add_logger() after gating on
-## ClassDB.class_exists("Logger"). Registered from inside the running game
-## so we can intercept print(), printerr(), push_error(), and
-## push_warning() and ferry them back to the editor over the
-## EngineDebugger channel — the same bridge PR #76 uses for screenshots.
+## NOTE: deliberately no `class_name`. Registered from inside the running
+## game so we can intercept print(), printerr(), push_error(), and
+## push_warning() and ferry them back to the editor over the EngineDebugger
+## channel — the same bridge PR #76 uses for screenshots.
 ##
 ## Logger virtuals can be called from any thread (e.g. async loaders push
 ## errors off the main thread). We accumulate into _pending under a Mutex
@@ -75,14 +68,15 @@ func _log_error(
 	if not resolved.path.is_empty():
 		loc = "%s:%d @ %s" % [resolved.path, resolved.line, resolved.function] if not resolved.function.is_empty() else "%s:%d" % [resolved.path, resolved.line]
 	var text: String = "%s (%s)" % [resolved.message, loc] if not loc.is_empty() else resolved.message
-	_append(resolved.level, text)
+	var details: Dictionary = resolved.get("details", {})
+	_append(resolved.level, text, details)
 	if error_type == _ERROR_TYPE_SCRIPT:
 		## Collect every function name in the first non-empty backtrace so
 		## game_helper can match its eval's uniquely named wrapper function.
 		var funcs := PackedStringArray()
-		for bt in script_backtraces:
+		for bt: RefCounted in script_backtraces:
 			if bt != null and bt.get_frame_count() > 0:
-				for i in bt.get_frame_count():
+				for i: int in bt.get_frame_count():
 					funcs.append(bt.get_frame_function(i))
 				break
 		_mutex.lock()
@@ -93,9 +87,12 @@ func _log_error(
 		_mutex.unlock()
 
 
-func _append(level: String, text: String) -> void:
+func _append(level: String, text: String, details: Dictionary = {}) -> void:
 	_mutex.lock()
-	_pending.append([level, text])
+	if details.is_empty():
+		_pending.append([level, text])
+	else:
+		_pending.append([level, text, details.duplicate(true)])
 	_mutex.unlock()
 
 
