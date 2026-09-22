@@ -210,7 +210,14 @@ async def _generate_episode_once(client, topic, memory=()):
 				{"role": "user", "content": user_msg}
 			],
 			temperature=0.9,
-			max_tokens=2000,
+			# Reasoning models (e.g. deepseek-v4.1-flash) spend part of this
+			# budget on a hidden chain-of-thought before the visible content —
+			# too low a cap starves the actual JSON output entirely
+			# (finish_reason="length", content=None). Ask OpenRouter to skip
+			# reasoning for this task (a short structured comedy script has no
+			# need for it) and give plenty of headroom either way.
+			max_tokens=4000,
+			extra_body={"reasoning": {"enabled": False}},
 			response_format={"type": "json_object"}
 		)
 		choice = completion.choices[0]
