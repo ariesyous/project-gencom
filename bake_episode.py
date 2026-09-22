@@ -166,8 +166,23 @@ def _coerce_skit(skit):
 	return {"scene": scene, "lines": cleaned}
 
 
-async def generate_episode(client, topic, memory=()):
-	"""Fetch a themed multi-skit episode from the LLM.
+async def generate_episode(client, topic, memory=(), attempts=3):
+	"""Fetch a themed multi-skit episode from the LLM, retrying on empty/invalid
+	responses (openrouter/free re-picks a random underlying model per call, and
+	not every one of them reliably honors response_format=json_object — a
+	retry usually lands on a model that does)."""
+	for attempt in range(1, attempts + 1):
+		episode = await _generate_episode_once(client, topic, memory)
+		if episode:
+			return episode
+		if attempt < attempts:
+			print(f"[Warning] Episode generation attempt {attempt}/{attempts} failed, retrying...")
+			await asyncio.sleep(2.0)
+	return None
+
+
+async def _generate_episode_once(client, topic, memory=()):
+	"""One attempt at fetching a themed multi-skit episode from the LLM.
 
 	`memory` is a small rolling window of past episodes ({"theme", "callback"} dicts)
 	offered to the writer as optional callback material — the show's only continuity.
