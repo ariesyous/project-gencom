@@ -15,6 +15,7 @@ on:
         options:
           - "openrouter/free"
           - "openai/gpt-oss-120b"
+          - "deepseek/deepseek-v4.1-flash"
 
 concurrency:
   group: bake-episode
