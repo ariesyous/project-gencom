@@ -1,0 +1,81 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: "4.7.0"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cache the exported Web build keyed on the files that actually affect
+      # it. Episode-bake commits only touch shows/, so most pushes hit this
+      # cache and skip the (slow) Godot download + export entirely.
+      - name: Hash Godot/frontend sources
+        id: hash
+        run: |
+          echo "value=${{ hashFiles('main.gd', 'main.tscn', 'project.godot', 'export_presets.cfg', 'materials/**') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Web export
+        id: cache-build
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: godot-web-build-${{ steps.hash.outputs.value }}
+
+      - name: Setup Godot
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: true
+
+      - name: Strip dev-only plugin from project.godot
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: |
+          sed -i '/_mcp_game_helper=/d' project.godot
+          sed -i '/addons\/godot_ai\/plugin.cfg/d' project.godot
+
+      - name: Export Web build
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p build
+          godot --headless --export-release "Web" build/index.html
+
+      - name: Assemble _site
+        run: |
+          mkdir -p _site
+          cp -r build/. _site/
+          mkdir -p _site/shows
+          cp -r shows/. _site/shows/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

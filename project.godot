@@ -25,7 +25,7 @@ enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")
 
 [physics]
 
-3d/physics_engine="Jolt Physics"
+3d/physics_engine="GodotPhysics3D"
 
 [rendering]
 

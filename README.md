@@ -1,48 +1,53 @@
 # AI Sitcom Studio: Alan & Bridgette
 
-An automated 3D sitcom production environment powered by Godot 4 and Groq AI. 
+An automated 3D sitcom, baked daily and hosted for free on GitHub Pages, powered by Godot 4 (Web export) and an LLM via OpenRouter.
 
 ## 🎭 Overview
-This project simulates a live sitcom set in an open-concept New York studio apartment. Two AI characters, **Alan** and **Bridgette**, autonomously wander their home, sit on the couch, and engage in funny, episodic skits generated in real-time by a Large Language Model.
+Two AI characters, **Alan** and **Bridgette** (plus their eccentric neighbor **Kessler**), wander an open-concept Toronto apartment, a coffee shop, and a grocery store, playing out episodic skits. There is no live backend — episodes are generated ahead of time by a GitHub Action and played back entirely client-side in the browser.
 
 ## 🛠️ System Architecture
 
-### 1. The Brain (Python Orchestrator)
-Located in `orchestrator.py`, this script manages the "performance lifecycle":
-- **Script Generation:** Fetches JSON-formatted sitcom scenes from Groq (`openai/gpt-oss-120b`).
+### 1. The Bake Pipeline (`bake_episode.py`, GitHub Actions)
+Runs on a daily schedule (`.github/workflows/bake-episode.yml`), with no live Godot connection:
+- **Script Generation:** Fetches a JSON-formatted episode from an LLM via OpenRouter.
 - **Voice Synthesis:** Generates character-specific audio using `edge-tts`.
-- **Engine Control:** Communicates via WebSockets to trigger animations and audio in Godot.
+- **Publishing:** Writes `shows/ep{N}/episode.json` (a flat, ordered event trace) + `shows/ep{N}/audio/*.mp3`, and updates `shows/manifest.json` — committed straight to the repo.
 
-### 2. The Stage (Godot 4 Engine)
-The 3D environment and character logic live in `main.tscn` and `main.gd`:
-- **WebSocket Server:** Listens on port 9000 for performance commands.
+### 2. The Player (Godot 4 Web export)
+The 3D environment and character logic live in `main.tscn` and `main.gd`, exported to HTML5/WASM:
+- **Episode Sequencer:** Fetches `shows/manifest.json` and an episode's `episode.json` over HTTP, then walks its events, firing the same playback functions a live WebSocket dispatcher used to call.
 - **Autonomous Behaviors:** Characters decide when to walk, stand, or sit independently.
 - **Dynamic Multi-Cam:** An automated "Director" logic cuts between wide shots and close-ups based on which character is speaking.
 - **Integrated Laugh Track:** Plays randomized audience laughter after AI-tagged punchlines.
 
-## 🚀 Getting Started
+### 3. Deployment (`.github/workflows/deploy-pages.yml`)
+Exports the Godot `Web` preset (cached — an episode-bake commit that only touches `shows/` skips the re-export) and publishes it alongside `shows/` to GitHub Pages. A small menu (injected via the export preset's `html/head_include`) lets visitors pick an episode; the default is to autoplay a random one.
+
+## 🚀 Local Development
 
 ### Prerequisites
-- **Godot 4.3+**
+- **Godot 4.7+**
 - **Python 3.10+**
-- A **Groq API Key**.
+- An **OpenRouter API Key** (for baking new episodes locally).
 
 ### Setup
-1. Clone the repository.
-2. Install Python dependencies:
-   ```bash
-   pip install openai edge-tts websockets
-   ```
-3. Place 4 laugh track files in `res://audio/` named `laugh1.mp3` through `laugh4.mp3`.
+```bash
+pip install -r requirements.txt
+```
 
-### Running the Show
-1. **Launch the Engine:** Open the project in Godot and press **Play** (F5).
-2. **Launch the Cast:** Open a terminal and run the wrapper script:
-   ```powershell
-   .\start_comedy.ps1
-   ```
-   *(Note: You will need to paste your Groq API key into the top of `start_comedy.ps1` first).*
+### Baking an episode locally
+```bash
+export OPENROUTER_API_KEY=...   # or $env:OPENROUTER_API_KEY on Windows
+python bake_episode.py
+python prune_episodes.py
+```
+
+### Testing playback in the editor
+The Godot sequencer fetches everything over HTTP (same as the deployed Web build), so native/editor builds need a local server to resolve relative URLs against:
+```bash
+python -m http.server 8000
+```
+Then open the project in Godot and press **Play** (F5) — `main.gd`'s `LOCAL_DEV_BASE_URL` points at `http://localhost:8000/`.
 
 ## 📖 Further Reading
-- For AI agents looking to contribute, see [CLAUDE.md](./claude.md).
-- For established project conventions, see [GEMINI.md](./GEMINI.md).
+- For AI agents looking to contribute, see [CLAUDE.md](./CLAUDE.md).

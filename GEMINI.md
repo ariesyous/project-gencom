@@ -1,19 +1,19 @@
 # Project GenCom: AI Sitcom Studio
 
-This project is an AI-driven 3D sitcom environment using Godot 4 and a Python orchestration layer.
+This project is a statically-hosted 3D sitcom: a GitHub Action bakes episodes ahead of time (no live orchestrator), and a Godot 4 Web export plays them back client-side on GitHub Pages. **See [CLAUDE.md](./CLAUDE.md) for the authoritative, up-to-date architecture** — this file is a lighter pointer, not the source of truth.
 
 ## System Architecture
 
-### 1. Python Orchestrator (`orchestrator.py`)
-- **Brain:** Connects to Groq (using `openai/gpt-oss-120b` or `llama-3.3-70b-versatile`) to generate multi-line episodic comedy skits in JSON format.
-- **Voice:** Uses `edge-tts` to synthesize speech for two actors (Alan and Bridgette).
-- **Control:** Acts as a WebSocket client to push events (audio playback, laugh triggers) to the Godot engine.
+### 1. Bake pipeline (`bake_episode.py`, run by `.github/workflows/bake-episode.yml`)
+- **Brain:** Connects to an LLM via OpenRouter to generate multi-line episodic comedy skits in JSON format.
+- **Voice:** Uses `edge-tts` to synthesize speech for Alan, Bridgette, and Kessler.
+- **Publish:** Writes `shows/ep{N}/episode.json` (a flat, ordered event trace — no WebSocket, no live Godot connection) + audio, and updates `shows/manifest.json`.
 
-### 2. Godot 4 Engine
-- **Server:** Runs a WebSocket server on `ws://localhost:9000` to receive performance signals.
-- **Visuals:** An open-concept studio apartment built with CSG primitives, featuring articulated humanoid actors.
-- **Logic (`main.gd`):** 
-    - Manages an autonomous state machine for actor behaviors (Wander, Head to Seat, Sit).
+### 2. Godot 4 Engine (exported to Web/WASM)
+- **Sequencer:** Fetches `shows/manifest.json` + an episode's JSON over HTTP and walks its events locally (`main.gd`'s `_sequencer_main_loop`).
+- **Visuals:** Three CSG-built sets (apartment, coffee shop, grocery) with articulated humanoid actors.
+- **Logic (`main.gd`):**
+    - Manages an autonomous state machine for actor behaviors (Wander, Head to Seat, Sit, Offstage/Entering for Kessler).
     - Routes audio and mouth animations to the correct character.
     - Implements a dynamic "Director" camera system that cuts between master and close-up shots based on speaker.
 
@@ -22,20 +22,22 @@ This project is an AI-driven 3D sitcom environment using Godot 4 and a Python or
 ### GDScript (`.gd`)
 - **Hierarchy Awareness:** Always use `get_node_or_null()` or check `has_node()` when referencing character-specific components like `VoiceA` or `MouthB` to prevent runtime crashes.
 - **Coordinate System:** Actors move on the `y=0` plane. Always zero out the Y component of target vectors to prevent "upward" rotation crashes in `Basis.looking_at`.
-- **WebSocket Polling:** Ensure `socket.poll()` is called in `_process` to keep the network buffer clear.
+- **HTTP fetches, not polling a socket:** the sequencer awaits `HTTPRequest.request_completed` per fetch (manifest, episode JSON, each line's mp3) instead of polling a `WebSocketPeer` every frame.
 
 ### Python (`.py`)
 - **Async Workflow:** All network and TTS operations must be non-blocking. Use `asyncio.get_running_loop().run_in_executor()` for synchronous API calls.
-- **Timing:** Use dynamic duration multipliers for speech (`word_count * multiplier`) and include "beats" (0.4s - 1.5s) for comedic timing and laugh tracks.
+- **One episode per process:** `bake_episode.py` bakes exactly one episode per invocation and exits — the daily cadence is the GitHub Actions cron, not a loop in the script.
 
 ## Environment Setup
-- **Groq API:** Requires `GROQ_API_KEY` set in the environment or via the `start_comedy.ps1` wrapper.
-- **Audio:** All generated MP3s are stored in the `./audio` folder. Godot expects this folder to be within its resource path (`res://audio/`).
-- **Laugh Tracks:** Requires `laugh1.mp3` through `laugh4.mp3` in the audio folder for random audience integration.
+- **OpenRouter API:** Requires `OPENROUTER_API_KEY` (a GitHub Actions secret in production); `OPENROUTER_MODEL` optionally overrides the default `openrouter/free`.
+- **Audio:** Baked episode dialogue lives under `shows/ep{N}/audio/` and is fetched over HTTP at playback time, not bundled into the Godot export. Fixed sound effects (`laugh1-4.mp3`, `stinger1-6.mp3`) remain bundled under `res://audio/`.
 
 ## How to Run
-1. Open the project in Godot 4 and play the `main.tscn` scene.
-2. Run the PowerShell wrapper:
-   ```powershell
-   .\start_comedy.ps1
-   ```
+See [CLAUDE.md](./CLAUDE.md#️-how-to-run) for the full picture. In short:
+```bash
+pip install -r requirements.txt
+export OPENROUTER_API_KEY=...
+python bake_episode.py
+python -m http.server 8000   # for local editor testing only
+```
+Then Play `main.tscn` in the Godot editor.

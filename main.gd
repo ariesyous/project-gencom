@@ -59,12 +59,40 @@ var SCENES := {
 	},
 }
 
-var server := TCPServer.new()
-var socket := WebSocketPeer.new()
-var port := 9000
-var client_connected := false
-
 var actors := {}
+
+# --- Episode sequencer -----------------------------------------------------
+# Replaces the old live WebSocket link (Python orchestrator -> running Godot)
+# with a self-contained player: fetch a baked "shows/manifest.json", pick an
+# episode (random, or ?ep=<id> for a deep link), fetch its episode.json, and
+# walk the flat `events` list, firing the same play_line/play_laugh/
+# play_stinger/_set_scene functions the old socket dispatcher used to call.
+# Pacing constants below mirror orchestrator.py's STINGER_GAP/LINE_PAUSE/etc,
+# now driving playback locally instead of pacing WebSocket sends.
+const SEQ_STINGER_GAP := 6.0
+const SEQ_SKIT_INTRO_PAUSE := 1.5
+const SEQ_LINE_PAUSE := 1.1
+const SEQ_LAUGH_WAIT := 7.6
+const SEQ_POST_LAUGH_PAUSE := 1.4
+const SEQ_SCENE_HOLD := 1.5  # extra beat after _set_scene's own pan tween settles
+const SEQ_RETRY_WAIT := 5.0  # backoff after a failed manifest/episode fetch
+# Relative URLs ("shows/...") resolve fine under Web export (same-origin fetch
+# against the current page), but native/editor builds have no "current page"
+# to resolve against — HTTPRequest needs an absolute URL there. For local
+# testing, serve the repo root with `python -m http.server 8000` and Play the
+# scene in the editor.
+const LOCAL_DEV_BASE_URL := "http://localhost:8000/"
+
+var http_manifest: HTTPRequest
+var http_episode: HTTPRequest
+var http_audio: HTTPRequest
+var episode_base_url := ""
+var episode_events: Array = []
+var episode_index := 0
+# Set by request_episode() (called from JS via the browser menu) to interrupt
+# the currently-playing episode and jump to a specific one.
+var pending_forced_id := ""
+var skip_current_episode := false
 
 # Close-up camera currently tracking a speaking actor (null = wide shot).
 var active_cam: Camera3D = null
@@ -95,11 +123,16 @@ func _ready() -> void:
 	if has_node("Bridgette/VoiceB"): $Bridgette/VoiceB.finished.connect(_on_voice_finished.bind("B"))
 	if has_node("Kessler/VoiceK"): $Kessler/VoiceK.finished.connect(_on_voice_finished.bind("K"))
 
-	var err = server.listen(port)
-	if err != OK:
-		print("WebSocket Server: Error listening on ", port)
-	else:
-		print("WebSocket Server: Listening on ", port)
+	http_manifest = HTTPRequest.new(); add_child(http_manifest)
+	http_episode = HTTPRequest.new(); add_child(http_episode)
+	http_audio = HTTPRequest.new(); add_child(http_audio)
+
+	# Let the in-page menu (see www/app.js) tell a running instance to jump to
+	# a specific episode without reloading the page.
+	if OS.has_feature("web"):
+		JavaScriptBridge.get_interface("window").godot_load_episode = JavaScriptBridge.create_callback(_js_load_episode)
+
+	_sequencer_main_loop()
 
 func _init_actor(id: String, node: Node3D, anim_path: String, fixed_scene: String = "") -> void:
 	if not node: return
@@ -148,7 +181,6 @@ func _init_actor(id: String, node: Node3D, anim_path: String, fixed_scene: Strin
 	}
 
 func _process(delta: float) -> void:
-	_handle_network()
 	for id in actors:
 		_update_actor(id, delta)
 		_update_face(id)
@@ -237,26 +269,130 @@ func _start_react(id: String, kind: String, duration_ms: int) -> void:
 	data["react_start"] = now
 	data["react_end"] = now + duration_ms
 
-func _handle_network() -> void:
-	if server.is_connection_available():
-		var conn = server.take_connection()
-		if client_connected:
-			socket.close()
-		socket.accept_stream(conn)
-		client_connected = true
-		print("WebSocket Server: New client connected!")
+func _js_load_episode(args: Array) -> void:
+	# Called from the in-page episode menu (injected via the Web export
+	# preset's html/head_include, see export_presets.cfg) via JavaScriptBridge.
+	if args.size() > 0:
+		request_episode(str(args[0]))
 
-	if client_connected:
-		socket.poll()
-		var ws_state = socket.get_ready_state()
-		if ws_state == WebSocketPeer.STATE_OPEN:
-			while socket.get_available_packet_count() > 0:
-				var packet = socket.get_packet()
-				var data_string = packet.get_string_from_utf8()
-				_handle_json_packet(data_string)
-		elif ws_state == WebSocketPeer.STATE_CLOSED or ws_state == WebSocketPeer.STATE_CLOSING:
-			client_connected = false
-			print("WebSocket Server: Client disconnected.")
+func request_episode(id: String) -> void:
+	pending_forced_id = id
+	skip_current_episode = true
+
+func _get_requested_episode_id() -> String:
+	# Deep link support: ?ep=<id> in the page URL picks a specific episode on
+	# first load instead of a random one.
+	if not OS.has_feature("web"):
+		return ""
+	var qs = JavaScriptBridge.eval("window.location.search", true)
+	if typeof(qs) != TYPE_STRING or not qs.begins_with("?"):
+		return ""
+	for pair in qs.substr(1).split("&"):
+		var kv = pair.split("=")
+		if kv.size() == 2 and kv[0] == "ep":
+			return kv[1].uri_decode()
+	return ""
+
+func _resolve_url(path: String) -> String:
+	return path if OS.has_feature("web") else LOCAL_DEV_BASE_URL + path
+
+func _fetch_json(req: HTTPRequest, path: String) -> Variant:
+	# Fetch + parse a JSON document. Returns null on any failure.
+	var url := _resolve_url(path)
+	var err = req.request(url)
+	if err != OK:
+		print("Sequencer: failed to request ", url, " (", err, ")")
+		return null
+	var res: Array = await req.request_completed
+	if res[0] != HTTPRequest.RESULT_SUCCESS or res[1] != 200:
+		print("Sequencer: fetch failed for ", url, " (result=", res[0], " code=", res[1], ")")
+		return null
+	var json := JSON.new()
+	if json.parse(res[3].get_string_from_utf8()) != OK:
+		print("Sequencer: bad JSON from ", url)
+		return null
+	return json.data
+
+func _pick_episode(episodes: Array, forced_id: String) -> Variant:
+	if forced_id != "":
+		for e in episodes:
+			if typeof(e) == TYPE_DICTIONARY and e.get("id", "") == forced_id:
+				return e
+	return episodes[randi() % episodes.size()]
+
+func _sequencer_main_loop() -> void:
+	# Single long-lived loop (not recursive) so playing episodes indefinitely
+	# never grows the call/await stack. See CLAUDE.md "Episode sequencer".
+	var forced_id := _get_requested_episode_id()
+	while true:
+		if pending_forced_id != "":
+			forced_id = pending_forced_id
+			pending_forced_id = ""
+		skip_current_episode = false
+
+		var manifest = await _fetch_json(http_manifest, "shows/manifest.json")
+		var episodes: Array = manifest.get("episodes", []) if typeof(manifest) == TYPE_DICTIONARY else []
+		if episodes.is_empty():
+			await get_tree().create_timer(SEQ_RETRY_WAIT).timeout
+			continue
+
+		var chosen = _pick_episode(episodes, forced_id)
+		forced_id = ""  # only honor the deep link/forced pick once
+
+		var ep_path: String = chosen.get("path", "") if typeof(chosen) == TYPE_DICTIONARY else ""
+		var episode = null
+		if ep_path != "":
+			episode = await _fetch_json(http_episode, ep_path)
+		episode_events = episode.get("events", []) if typeof(episode) == TYPE_DICTIONARY else []
+		if episode_events.is_empty():
+			await get_tree().create_timer(SEQ_RETRY_WAIT).timeout
+			continue
+		episode_base_url = ep_path.get_base_dir() + "/"
+
+		episode_index = 0
+		while episode_index < episode_events.size() and not skip_current_episode:
+			var ev = episode_events[episode_index]
+			episode_index += 1
+			if typeof(ev) == TYPE_DICTIONARY:
+				await _handle_baked_event(ev)
+
+		if not skip_current_episode:
+			await get_tree().create_timer(SEQ_STINGER_GAP).timeout
+
+func _handle_baked_event(ev: Dictionary) -> void:
+	match ev.get("type", ""):
+		"set_scene":
+			await _set_scene(ev.get("scene", "apartment"))
+			await get_tree().create_timer(SEQ_SCENE_HOLD).timeout
+		"skit_boundary":
+			await get_tree().create_timer(SEQ_SKIT_INTRO_PAUSE).timeout
+		"play_audio":
+			await _play_baked_line(ev)
+		"trigger_laugh":
+			play_laugh()
+			await get_tree().create_timer(SEQ_LAUGH_WAIT + SEQ_POST_LAUGH_PAUSE).timeout
+		"play_stinger":
+			play_stinger()
+			await get_tree().create_timer(SEQ_STINGER_GAP).timeout
+
+func _play_baked_line(ev: Dictionary) -> void:
+	var actor_id: String = ev.get("actor", "A")
+	var file: String = ev.get("file", "")
+	var text: String = str(ev.get("text", ""))
+	if file == "" or not actors.has(actor_id):
+		return
+	var err = http_audio.request(_resolve_url(episode_base_url + file))
+	if err != OK:
+		print("Sequencer: failed to request audio ", file, " (", err, ")")
+		return
+	var res: Array = await http_audio.request_completed
+	if res[0] != HTTPRequest.RESULT_SUCCESS or res[1] != 200:
+		print("Sequencer: audio fetch failed for ", file)
+		return
+	play_line(res[3], actor_id, text)
+	while actors[actor_id]["speaking"]:
+		await get_tree().process_frame
+	await get_tree().create_timer(SEQ_LINE_PAUSE).timeout
 
 func _update_actor(id: String, delta: float) -> void:
 	var data = actors[id]
@@ -414,23 +550,12 @@ func _kessler_enter() -> void:
 	# ENTERING; this covers the hand-off frame either way).
 	data["next_decision_time"] = Time.get_ticks_msec() + 15000
 
-func _handle_json_packet(json_text: String) -> void:
-	var json = JSON.new()
-	if json.parse(json_text) == OK:
-		var data = json.data
-		if typeof(data) == TYPE_DICTIONARY:
-			if data.get("event") == "play_audio":
-				play_line(data.get("file", ""), data.get("actor", "A"), str(data.get("text", "")))
-			elif data.get("event") == "trigger_laugh":
-				play_laugh()
-			elif data.get("event") == "play_stinger":
-				play_stinger()
-			elif data.get("event") == "set_scene":
-				_set_scene(data.get("scene", "apartment"))
-			elif data.get("event") == "park_cam":
-				_park_exterior_cam(data.get("scene", "apartment"))
+func _make_mp3_stream(bytes: PackedByteArray) -> AudioStreamMP3:
+	var stream := AudioStreamMP3.new()
+	stream.data = bytes
+	return stream
 
-func play_line(file_name: String, actor_id: String, text: String = "") -> void:
+func play_line(mp3_bytes: PackedByteArray, actor_id: String, text: String = "") -> void:
 	if not actors.has(actor_id):
 		print("Sitcom: Ignoring play_audio for unknown actor '", actor_id, "'")
 		return
@@ -440,35 +565,27 @@ func play_line(file_name: String, actor_id: String, text: String = "") -> void:
 		_kessler_enter()
 	_switch_camera(actor_id)
 
-	var path = "res://audio/" + file_name
-	if not FileAccess.file_exists(path):
-		path = "res://" + file_name
-		if not FileAccess.file_exists(path): return
+	var stream := _make_mp3_stream(mp3_bytes)
+	# An empty/corrupt clip has no length and would never fire `finished`,
+	# leaving the mouth flapping forever. Skip it instead of getting stuck.
+	if stream.get_length() <= 0.0:
+		print("Sitcom: Ignoring empty/invalid clip for actor ", actor_id)
+		return
+	var voice_node = actors[actor_id].get("voice")
+	if voice_node:
+		voice_node.stream = stream
+		voice_node.play()
 
-	var file = FileAccess.open(path, FileAccess.READ)
-	if file:
-		var stream = AudioStreamMP3.new()
-		stream.data = file.get_buffer(file.get_length())
-		# An empty/corrupt clip has no length and would never fire `finished`,
-		# leaving the mouth flapping forever. Skip it instead of getting stuck.
-		if stream.get_length() <= 0.0:
-			print("Sitcom: Ignoring empty/invalid clip: ", file_name)
-			return
-		var voice_node = actors[actor_id].get("voice")
-		if voice_node:
-			voice_node.stream = stream
-			voice_node.play()
-
-		# Mouth flap is driven by _update_face while "speaking" is true;
-		# the body keeps its idle/walk/sit animation underneath.
-		# speak_until is a watchdog: if `finished` somehow never fires, the mouth
-		# still settles closed once the clip's duration (plus a margin) elapses.
-		actors[actor_id]["speaking"] = true
-		actors[actor_id]["speak_until"] = Time.get_ticks_msec() + int(stream.get_length() * 1000.0) + 800
-		# Only after the clip is confirmed playable — a skipped clip must never
-		# leave a stuck caption on screen.
-		_show_subtitle(actor_id, text)
-		print("Sitcom: Playing line for Actor ", actor_id, ": ", file_name)
+	# Mouth flap is driven by _update_face while "speaking" is true;
+	# the body keeps its idle/walk/sit animation underneath.
+	# speak_until is a watchdog: if `finished` somehow never fires, the mouth
+	# still settles closed once the clip's duration (plus a margin) elapses.
+	actors[actor_id]["speaking"] = true
+	actors[actor_id]["speak_until"] = Time.get_ticks_msec() + int(stream.get_length() * 1000.0) + 800
+	# Only after the clip is confirmed playable — a skipped clip must never
+	# leave a stuck caption on screen.
+	_show_subtitle(actor_id, text)
+	print("Sitcom: Playing line for Actor ", actor_id)
 
 func _show_subtitle(actor_id: String, text: String) -> void:
 	# Empty text (old clients) or a missing label (scene without the UI) => no caption.
@@ -513,15 +630,15 @@ func _cut_to_wide() -> void:
 	active_cam_target = null
 
 func _play_clip(node_path: String, audio_path: String) -> void:
-	# Load an mp3 off disk and play it through the given AudioStreamPlayer node.
+	# Laughs/stingers are small, fixed, non-generated sound effects — they stay
+	# bundled in the exported PCK and load via res://, unlike episode dialogue
+	# (which the sequencer fetches over HTTP; see _play_baked_line).
 	if not FileAccess.file_exists(audio_path): return
 	var file = FileAccess.open(audio_path, FileAccess.READ)
 	if not file: return
 	var player = get_node_or_null(node_path)
 	if not player: return
-	var stream = AudioStreamMP3.new()
-	stream.data = file.get_buffer(file.get_length())
-	player.stream = stream
+	player.stream = _make_mp3_stream(file.get_buffer(file.get_length()))
 	player.play()
 
 func play_laugh() -> void:

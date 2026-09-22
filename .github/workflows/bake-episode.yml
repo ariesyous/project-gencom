@@ -1,0 +1,58 @@
+name: Bake Episode
+
+on:
+  schedule:
+    # 04:17 UTC daily. Offset from the hour to avoid the top-of-hour GitHub
+    # Actions cron rush (same pattern as ariesyous/openfeed).
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "OpenRouter model slug to use for this run only"
+        required: false
+        default: "openrouter/free"
+        type: choice
+        options:
+          - "openrouter/free"
+          - "openai/gpt-oss-120b"
+
+concurrency:
+  group: bake-episode
+  cancel-in-progress: false
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Bake episode
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ github.event.inputs.model || 'openrouter/free' }}
+        run: python bake_episode.py
+
+      - name: Prune old episodes
+        run: python prune_episodes.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add shows/
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "bake: new episode $(date -u +%Y-%m-%d)"
+            git push
+          fi

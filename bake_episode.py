@@ -1,35 +1,37 @@
+"""CI-safe episode baker: generate one episode via OpenRouter, synthesize its
+audio via edge-tts, and write a static shows/ep{N}/episode.json + audio/*.mp3
+bundle plus an updated shows/manifest.json. No live Godot connection, no
+WebSocket, no sockets of any kind — this is a pure data-publish step meant to
+run in a GitHub Action (see .github/workflows/bake-episode.yml).
+
+Run once per invocation (one episode per CI run); scheduling cadence is the
+workflow's cron, not a loop in here. For local manual bakes, just run this
+script directly with OPENROUTER_API_KEY set.
+"""
 import asyncio
 import json
 import os
 import random
 from collections import deque
+from datetime import datetime, timezone
+
 from openai import OpenAI
 import edge_tts
-import websockets
 
 from audio_timing import mp3_duration
 
 # --- Configuration ---
-# LLM REQUIREMENTS (for swapping providers/models) — measured with the o200k_base
-# tokenizer (~±10%). generate_episode() is the ONLY LLM call: a single, STATELESS
-# request (system + one short user message, no history, no retrieval), one per episode.
-#   - Input : ~925 tok system prompt + ~20-110 tok user (grows with the "Previously on"
-#             episode memory, up to 3 entries) + ~10 overhead = ~1030 tok worst case.
-#   - Output: ~400 (min 3x4) / ~750 (typical 4x6) / ~1230 (max 5x8 lines) tok; capped at
-#             max_tokens=2000. Per-episode total ~1.4k–2.2k tok.
-#   - Context window needed: input + reserved output ~= ~3k tok. A 4k model suffices,
-#     8k is comfortable; context length is NOT the binding constraint (nothing accumulates).
-#   - Needs: JSON output (response_format=json_object below; the parser also tolerates
-#     loose JSON) and decent instruction-following at a ~910-tok multi-constraint prompt.
-#   - Throughput is trivial: ~1 call per several minutes (an episode plays out over its
-#     TTS runtime). The system prompt is byte-identical every call -> ideal for prompt
-#     caching on providers that bill it (Groq does not cache-discount).
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-MODEL_NAME = "openai/gpt-oss-120b" # User suggested openai/gpt-oss-120b
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+# Daily scheduled runs use this default; workflow_dispatch can override via
+# the OPENROUTER_MODEL env var (see .github/workflows/bake-episode.yml),
+# mirroring the pattern already used in github.com/ariesyous/openfeed.
+MODEL_NAME = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
 
-GODOT_AUDIO_DIR = "./audio" 
-GODOT_WS_URL = "ws://localhost:9000"
+SHOWS_DIR = "./shows"
+MANIFEST_PATH = os.path.join(SHOWS_DIR, "manifest.json")
+MEMORY_PATH = os.path.join(SHOWS_DIR, "_memory.json")
+TOPIC_STATE_PATH = os.path.join(SHOWS_DIR, "_topic_state.json")
 
 VOICES = {
 	"A": "en-US-GuyNeural",
@@ -48,21 +50,11 @@ VOICE_STYLES = {
 ACTORS = ("A", "B", "K")
 KESSLER_SCENE = "grocery"
 
-NUM_STINGERS = 6        # stinger1.mp3 .. stinger6.mp3 in ./audio
-STINGER_GAP = 6.0       # act break; the next skit opens as the sting tails off
-EPISODE_GAP = 9.5       # longer beat between whole episodes (after the warm closer)
-SKIT_INTRO_PAUSE = 1.5  # beat before a new skit begins
-LINE_PAUSE = 1.1        # natural beat after a line before the next (no talking over each other)
-LAUGH_WAIT = 7.6        # cover the longest laugh clip (Godot picks one at random)
-POST_LAUGH_PAUSE = 1.4  # actors wait for the laughter to settle before speaking
-SCENE_TRANSITION_GAP = 5.5  # visual establishing shot: cut to the exterior facade,
-							# slow-pan over the stinger, then cut inside (matches main.gd ESTABLISH_PAN + hold)
-
-MAX_SKITS_PER_EPISODE = 5  # soft clamp so a runaway episode can't play forever
-
 # Known set ids; the writer tags each skit with one. Anything else falls back to "apartment".
 SCENES = ("apartment", "coffee_shop", "grocery")
 DEFAULT_SCENE = "apartment"
+
+MAX_SKITS_PER_EPISODE = 5  # soft clamp so a runaway episode can't play forever
 
 # Curated rotation of episode topics. One is picked per episode (no immediate
 # repeats); the model riffs an episode-long theme out of it. The user's named
@@ -175,7 +167,7 @@ def _coerce_skit(skit):
 
 
 async def generate_episode(client, topic, memory=()):
-	"""Fetch a themed multi-skit episode from Groq.
+	"""Fetch a themed multi-skit episode from the LLM.
 
 	`memory` is a small rolling window of past episodes ({"theme", "callback"} dicts)
 	offered to the writer as optional callback material — the show's only continuity.
@@ -194,7 +186,7 @@ async def generate_episode(client, topic, memory=()):
 		)
 
 	loop = asyncio.get_running_loop()
-	def call_groq():
+	def call_llm():
 		completion = client.chat.completions.create(
 			model=MODEL_NAME,
 			messages=[
@@ -208,7 +200,7 @@ async def generate_episode(client, topic, memory=()):
 		return completion.choices[0].message.content
 
 	try:
-		raw_text = await loop.run_in_executor(None, call_groq)
+		raw_text = await loop.run_in_executor(None, call_llm)
 		data = json.loads(raw_text)
 
 		# Find the list of skits. Ideally data["skits"]; tolerate bare arrays and
@@ -232,7 +224,7 @@ async def generate_episode(client, topic, memory=()):
 						break
 
 		if not isinstance(raw_skits, list):
-			print(f"[Error] Unexpected episode shape from Groq: {type(data).__name__}")
+			print(f"[Error] Unexpected episode shape from LLM: {type(data).__name__}")
 			return None
 
 		skits = []
@@ -246,18 +238,17 @@ async def generate_episode(client, topic, memory=()):
 			return None
 		return {"theme": theme or topic, "callback": callback, "skits": skits}
 	except Exception as e:
-		print(f"[Error] Failed to fetch episode from Groq: {e}")
+		print(f"[Error] Failed to fetch episode from LLM: {e}")
 		return None
 
-async def create_tts(text, voice_key, output_filename):
+
+async def create_tts(text, voice_key, filepath):
 	"""Generate local audio with edge-tts.
 
 	edge-tts occasionally returns NO audio without raising, leaving a 0-byte
-	file. A dead clip wedges the stage (Godot starts "speaking" but the empty
-	stream never fires `finished`), so we verify the file has real bytes and
-	retry once before giving up.
+	file. A dead clip would wedge the stage the same way it could live, so we
+	verify the file has real bytes and retry once before giving up.
 	"""
-	filepath = os.path.join(GODOT_AUDIO_DIR, output_filename)
 	voice = VOICES.get(voice_key, VOICES["A"])
 	style = VOICE_STYLES.get(voice_key, {})
 
@@ -272,169 +263,153 @@ async def create_tts(text, voice_key, output_filename):
 			print(f"[Error] Failed to generate TTS for Actor {voice_key}: {e}")
 		await asyncio.sleep(0.6)  # brief backoff before the retry
 
-	print(f"[Error] Skipping line — no audio produced after retry: {output_filename}")
+	print(f"[Error] Skipping line — no audio produced after retry: {filepath}")
 	return False
 
-async def notify_engine(filename, actor_id, text=""):
-	"""Sends a WebSocket signal to the listening Godot client.
 
-	`text` is the spoken line; Godot shows it as an on-screen subtitle while
-	the actor speaks (older stages without the subtitle UI just ignore it)."""
-	max_retries = 3
-	for attempt in range(max_retries):
+def _load_json(path, default):
+	if os.path.exists(path):
 		try:
-			async with websockets.connect(GODOT_WS_URL) as websocket:
-				payload = {
-					"event": "play_audio",
-					"file": filename,
-					"actor": actor_id,
-					"text": text
-				}
-				await websocket.send(json.dumps(payload))
-				await asyncio.sleep(1.0) # Hold for Godot to poll
-				return True
-		except Exception as e:
-			if attempt == max_retries - 1:
-				print(f"[Warning] Could not connect to Godot WebSocket after {max_retries} attempts: {e}")
-			else:
-				await asyncio.sleep(1.0) # Wait before retry
-	return False
-
-async def trigger_godot_laugh():
-	"""Sends a signal to Godot to play a random laugh track."""
-	try:
-		async with websockets.connect(GODOT_WS_URL) as websocket:
-			payload = {"event": "trigger_laugh"}
-			await websocket.send(json.dumps(payload))
-			await asyncio.sleep(0.5)
-	except Exception as e:
-		print(f"[Warning] Could not connect to Godot for laugh: {e}")
-
-async def trigger_stinger():
-	"""Sends a signal to Godot to play a random between-skit musical sting."""
-	try:
-		async with websockets.connect(GODOT_WS_URL) as websocket:
-			payload = {"event": "play_stinger"}
-			await websocket.send(json.dumps(payload))
-			await asyncio.sleep(0.5)
-	except Exception as e:
-		print(f"[Warning] Could not connect to Godot for stinger: {e}")
-
-async def set_scene(scene_id):
-	"""Tells Godot to perform a visual establishing transition into a new location:
-	cut to that set's exterior facade, slow-pan over a stinger, then cut inside."""
-	try:
-		async with websockets.connect(GODOT_WS_URL) as websocket:
-			payload = {"event": "set_scene", "scene": scene_id}
-			await websocket.send(json.dumps(payload))
-			await asyncio.sleep(0.5)
-	except Exception as e:
-		print(f"[Warning] Could not connect to Godot for scene change: {e}")
-
-async def play_line(entry, filename):
-	"""TTS one line, push it to Godot, and wait out its real duration (+ laugh)."""
-	actor = entry.get("actor", "A")
-	raw_line = entry.get("line", "")
-	if not raw_line:
-		return
-
-	has_laugh = "[LAUGH]" in raw_line
-	line = raw_line.replace("[LAUGH]", "").strip()
-	print(f"[Actor {actor}] {line}")
-
-	if not await create_tts(line, actor, filename):
-		return
-	if not await notify_engine(filename, actor, line):
-		print(f"[Error] Skipping line due to connection failure: {filename}")
-		return
-
-	# Wait for the line to finish (measured clip length, with a word-count fallback).
-	word_count = len(line.split())
-	clip_dur = mp3_duration(os.path.join(GODOT_AUDIO_DIR, filename), default=max(2.5, word_count * 0.5))
-	await asyncio.sleep(max(0.0, clip_dur - 1.0) + LINE_PAUSE)
-
-	if has_laugh:
-		await asyncio.sleep(0.4)
-		print("[System] Triggering Laugh Track...")
-		await trigger_godot_laugh()  # holds ~0.5s
-		await asyncio.sleep(max(0.0, LAUGH_WAIT - 0.5) + POST_LAUGH_PAUSE)
+			with open(path, "r", encoding="utf-8") as fh:
+				return json.load(fh)
+		except Exception:
+			pass
+	return default
 
 
-async def main_loop():
-	print(f"=== Launching NYC Apartment Comedy Orchestrator [{MODEL_NAME}] ===")
+def _save_json(path, data):
+	with open(path, "w", encoding="utf-8") as fh:
+		json.dump(data, fh, indent=2)
 
-	client = OpenAI(api_key=GROQ_API_KEY, base_url=GROQ_BASE_URL)
 
-	if not os.path.exists(GODOT_AUDIO_DIR):
-		os.makedirs(GODOT_AUDIO_DIR)
+def _next_episode_id(manifest):
+	n = len(manifest.get("episodes", [])) + 1
+	# Keep counting up even if earlier episodes were pruned — never reuse an id.
+	seen = {e["id"] for e in manifest.get("episodes", []) if "id" in e}
+	while f"ep{n:04d}" in seen:
+		n += 1
+	return f"ep{n:04d}"
 
-	episode_counter = 0
-	last_topic = None
-	topic_bag = []           # shuffle bag: every topic plays once before any repeats
-	memory = deque(maxlen=3)  # rolling "Previously on" — themes + running bits of recent episodes
-	current_scene = DEFAULT_SCENE  # Godot starts in the apartment
 
-	while True:
-		episode_counter += 1
+async def bake_one_episode() -> bool:
+	"""Generate, voice, and write one episode + update the manifest. Returns
+	True on success. Writes nothing on failure (no partial episode published)."""
+	client = OpenAI(api_key=OPENROUTER_API_KEY, base_url=OPENROUTER_BASE_URL)
+	os.makedirs(SHOWS_DIR, exist_ok=True)
 
-		# Draw from the shuffle bag; on refill, keep the seam from repeating the
-		# topic we just played by swapping it away from the top of the bag.
-		if not topic_bag:
-			topic_bag = random.sample(TOPICS, len(TOPICS))
-			if last_topic is not None and topic_bag[-1] == last_topic and len(topic_bag) > 1:
-				topic_bag[0], topic_bag[-1] = topic_bag[-1], topic_bag[0]
-		topic = topic_bag.pop()
-		last_topic = topic
+	manifest = _load_json(MANIFEST_PATH, {"episodes": []})
+	memory_list = _load_json(MEMORY_PATH, [])
+	memory = deque(memory_list, maxlen=3)
+	topic_state = _load_json(TOPIC_STATE_PATH, {"bag": [], "last_topic": None})
+	topic_bag = topic_state.get("bag", [])
+	last_topic = topic_state.get("last_topic")
 
-		print(f"\n--- Scripting Episode #{episode_counter} ---")
-		print(f"[Brain] Topic: {topic}")
+	if not topic_bag:
+		topic_bag = random.sample(TOPICS, len(TOPICS))
+		if last_topic is not None and topic_bag[-1] == last_topic and len(topic_bag) > 1:
+			topic_bag[0], topic_bag[-1] = topic_bag[-1], topic_bag[0]
+	topic = topic_bag.pop()
+	last_topic = topic
 
-		episode = await generate_episode(client, topic, memory)
-		if not episode:
-			print("[Error] Invalid episode received. Retrying shortly...")
-			await asyncio.sleep(10)
-			continue
+	print(f"=== Baking episode [{MODEL_NAME}] ===")
+	print(f"[Brain] Topic: {topic}")
 
-		skits = episode["skits"]
-		print(f"[Brain] Episode #{episode_counter} — \"{episode['theme']}\" ({len(skits)} skits)")
+	episode = await generate_episode(client, topic, memory)
+	if not episode:
+		print("[Error] Invalid episode received; aborting bake (nothing published).")
+		return False
 
-		for s, skit in enumerate(skits):
-			scene = skit.get("scene", DEFAULT_SCENE)
+	ep_id = _next_episode_id(manifest)
+	ep_dir = os.path.join(SHOWS_DIR, ep_id)
+	audio_dir = os.path.join(ep_dir, "audio")
+	os.makedirs(audio_dir, exist_ok=True)
 
-			# Act break BEFORE each skit. If the location changed, play a visual
-			# establishing shot into the new set (it carries its own stinger);
-			# otherwise (and never before the very first skit) roll a plain sting.
-			if scene != current_scene:
-				print(f"[System] Establishing shot -> {scene}")
-				await asyncio.sleep(0.5)
-				await set_scene(scene)
-				await asyncio.sleep(SCENE_TRANSITION_GAP)
-				current_scene = scene
-			elif s > 0:
-				print("[System] Skit finished. Rolling stinger...")
-				await asyncio.sleep(0.5)
-				await trigger_stinger()
-				await asyncio.sleep(STINGER_GAP)
+	skits = episode["skits"]
+	print(f"[Brain] {ep_id} — \"{episode['theme']}\" ({len(skits)} skits)")
 
-			await asyncio.sleep(SKIT_INTRO_PAUSE)  # brief beat before the skit begins
-			print(f"[Stage] Skit {s + 1}/{len(skits)} [{scene}]")
+	events = []
+	current_scene = DEFAULT_SCENE
+	line_counter = 0
+	any_line_ok = False
 
-			for i, entry in enumerate(skit["lines"]):
-				filename = f"ep{episode_counter}_skit{s}_line{i}.mp3"
-				await play_line(entry, filename)
+	for s, skit in enumerate(skits):
+		scene = skit.get("scene", DEFAULT_SCENE)
 
-		# Remember this episode (appended only after it actually played, so it
-		# never feeds into its own generation) for future "Previously on" hooks.
-		memory.append({"theme": episode["theme"], "callback": episode.get("callback", "")})
+		# Explicit scene-transition / stinger events, matching what used to be
+		# decided live in orchestrator.py's main_loop.
+		if scene != current_scene:
+			events.append({"type": "set_scene", "scene": scene})
+			current_scene = scene
+		elif s > 0:
+			events.append({"type": "play_stinger"})
 
-		# Longer beat to separate whole episodes, with a sting to close the act.
-		print("[System] Episode finished. Rolling stinger into the break...")
-		await asyncio.sleep(0.5)
-		await trigger_stinger()
-		await asyncio.sleep(EPISODE_GAP)
+		events.append({"type": "skit_boundary"})
+
+		for entry in skit["lines"]:
+			actor = entry.get("actor", "A")
+			raw_line = entry.get("line", "")
+			if not raw_line:
+				continue
+			has_laugh = "[LAUGH]" in raw_line
+			line = raw_line.replace("[LAUGH]", "").strip()
+			if not line:
+				continue
+
+			filename = f"line{line_counter:03d}.mp3"
+			filepath = os.path.join(audio_dir, filename)
+			line_counter += 1
+
+			ok = await create_tts(line, actor, filepath)
+			if not ok:
+				continue
+			any_line_ok = True
+			duration = mp3_duration(filepath, default=max(2.5, len(line.split()) * 0.5))
+			events.append({
+				"type": "play_audio",
+				"actor": actor,
+				"file": f"audio/{filename}",
+				"text": line,
+				"laugh": has_laugh,
+				"duration_s": round(duration, 2),
+			})
+			if has_laugh:
+				events.append({"type": "trigger_laugh"})
+
+	if not any_line_ok:
+		print("[Error] No usable audio was produced for this episode; aborting bake.")
+		return False
+
+	episode_doc = {
+		"id": ep_id,
+		"theme": episode["theme"],
+		"callback": episode.get("callback", ""),
+		"generated_at": datetime.now(timezone.utc).isoformat(),
+		"model": MODEL_NAME,
+		"events": events,
+	}
+	_save_json(os.path.join(ep_dir, "episode.json"), episode_doc)
+
+	manifest.setdefault("episodes", []).append({
+		"id": ep_id,
+		"theme": episode["theme"],
+		"aired_at": episode_doc["generated_at"],
+		"path": f"shows/{ep_id}/episode.json",
+	})
+	_save_json(MANIFEST_PATH, manifest)
+
+	# Continuity persists across CI runs (it used to live only in the
+	# long-running Python process's memory).
+	memory.append({"theme": episode["theme"], "callback": episode.get("callback", "")})
+	_save_json(MEMORY_PATH, list(memory))
+	_save_json(TOPIC_STATE_PATH, {"bag": topic_bag, "last_topic": last_topic})
+
+	print(f"[System] Baked {ep_id} ({line_counter} lines).")
+	return True
+
 
 if __name__ == "__main__":
-	if not GROQ_API_KEY:
-		print("[Critical Error] GROQ_API_KEY environment variable not set.")
-	else:
-		asyncio.run(main_loop())
+	if not OPENROUTER_API_KEY:
+		print("[Critical Error] OPENROUTER_API_KEY environment variable not set.")
+		raise SystemExit(1)
+	success = asyncio.run(bake_one_episode())
+	raise SystemExit(0 if success else 1)

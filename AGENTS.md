@@ -3,7 +3,7 @@
 This document provides specialized technical context for AI agents working on the Sitcom Studio codebase.
 
 ## 🤖 Agent Context
-You are operating in a hybrid Python/GDScript environment. `orchestrator.py` is the "Client/Director" (Groq writes a skit → edge-tts renders audio → pushes events over WebSocket). The Godot project (`main.tscn` + `main.gd`) is the "Server/Stage": it hosts the WebSocket **server**, animates the two actors, and plays the audio/laughs.
+This is now a static, self-contained show with no live backend: `bake_episode.py` runs in CI (OpenRouter + edge-tts) and writes `shows/ep{N}/episode.json` + audio; the Godot project, exported to Web (HTML5/WASM), fetches that data over HTTP and plays it back locally. There is no WebSocket anymore. **This file is a stale, older snapshot — see [CLAUDE.md](./CLAUDE.md) for the authoritative, up-to-date architecture** (rig, animation, cameras, multi-scene, the baked episode schema, and how to run everything).
 
 ## 📐 Critical Hierarchies
 To keep realistic humanoid proportions and avoid the "Potato Effect" (inherited scaling distortions), the character rig follows one rule: **scaled meshes are always leaf nodes; only *unscaled* `Node3D` pivots are ever nested.** This allows articulated knees/elbows without distortion. Face parts are flat siblings under `BodyA`/`BodyB` (suffix `A` for Alan, `B` for Bridgette).
@@ -36,25 +36,8 @@ To keep realistic humanoid proportions and avoid the "Potato Effect" (inherited 
 ## 🏙️ Scene / Environment
 `main.tscn` is a New-York-inspired open studio loft (exposed-brick north wall, big industrial window with a dusk skyline, ceiling, warm evening lighting). Furniture is grouped under `ApartmentEnvironment` in containers: `LivingArea`, `Kitchen`, `Bedroom`, `Windows`, `Decor`. Do not rename the nodes `main.gd` depends on: `CouchBase/Seat1`·`Seat2`, the three cameras, `LaughPlayer`, `Alan/VoiceA`, `Bridgette/VoiceB`.
 
-## 📡 WebSocket Protocol
-The Python orchestrator pushes JSON payloads to `ws://localhost:9000` (Godot is the server, Python the client; one connection per line).
-
-**Play Audio Event:**
-```json
-{ "event": "play_audio", "file": "skit_1_line_0.mp3", "actor": "A" }
-```
-
-**Trigger Laugh Event:**
-```json
-{ "event": "trigger_laugh" }
-```
-
-**Play Stinger Event** (between-skit musical transition; cuts to the wide shot, plays a random `audio/stinger1..6.mp3` through the non-positional `StingerPlayer`):
-```json
-{ "event": "play_stinger" }
-```
-
-Audio nodes: `Alan/VoiceA` & `Bridgette/VoiceB` (3D dialogue), `ApartmentEnvironment/LaughPlayer` (3D laugh track, `volume_db -8`), `StingerPlayer` (root, non-positional music). Inter-skit pacing lives in `orchestrator.py` (`STINGER_GAP`, `SKIT_INTRO_PAUSE`) — the long rest was replaced by a short stinger transition.
+## 📡 Baked Event Schema (see CLAUDE.md — this section is superseded)
+There is no WebSocket protocol anymore. `main.gd` fetches a baked `episode.json` (an ordered `events` array: `play_audio`/`trigger_laugh`/`play_stinger`/`set_scene`/`skit_boundary`) and interprets it locally. Full schema and pacing constants are documented in [CLAUDE.md](./CLAUDE.md#-baked-event-schema-formerly-the-websocket-protocol).
 
 ## 🛠️ Known Quirks & Established Fixes
 - **Forward Axis:** Godot's `-Z` is forward. Facial features must sit at negative Z relative to the head center.
@@ -63,17 +46,11 @@ Audio nodes: `Alan/VoiceA` & `Bridgette/VoiceB` (3D dialogue), `ApartmentEnviron
 - **One-shot pose hold:** a non-looping clip clears `current_animation` when it finishes — track the intended clip yourself (see `_play_body`) so a held pose isn't retriggered.
 - **Editor screenshots are stale:** the godot-ai `editor_screenshot` `viewport` source only redraws when the editor is focused. Verify visuals with `source="cinematic"` or `project_run` + `source="game"` instead.
 
-## ▶️ How to Run (two separate steps)
-The orchestrator and the stage are launched independently — pressing Play in Godot does NOT start the orchestrator, and `start_comedy.ps1` does NOT launch Godot:
-1. **Stage:** press Play in Godot (or run the scene) → starts the WebSocket *server* on `:9000`; actors wander silently until a client connects.
-2. **Director:** run `start_comedy.ps1` (sets `GROQ_API_KEY`, runs `orchestrator.py`) → the *client* connects and feeds `play_audio` / `trigger_laugh` / `play_stinger` events. The orchestrator opens a fresh short-lived connection per message.
-
-No-Groq alternative for step 2: `python ws_smoke.py` replays existing `audio/*.mp3` through the same events.
-
-> Note: `start_comedy.ps1` holds the Groq key in plaintext — treat it as a secret (don't share/commit it; rotate if it leaks).
+## ▶️ How to Run
+See [CLAUDE.md](./CLAUDE.md#️-how-to-run) — in short: `python bake_episode.py` (needs `OPENROUTER_API_KEY`) bakes an episode with no Godot involved; the Godot Web export plays whatever's in `shows/manifest.json`. For local editor testing, serve the repo with `python -m http.server 8000` and Play the scene.
 
 ## ✅ TODO / Next Steps
-- **Full end-to-end run:** with a valid `GROQ_API_KEY`, run `orchestrator.py` against the running game to validate generation → TTS → playback and confirm the new stinger/laugh/pacing feel. (`ws_smoke.py` already covers the dependency-free path.)
+See CLAUDE.md's TODO section for the current list (Web export verification, CI dry runs).
 
 ## 💡 Future Development Ideas
 - **Two-person couch / hands-on-lap:** refine `sit_v1` so resting hands land naturally and both actors share the couch cleanly.
