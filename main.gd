@@ -393,6 +393,7 @@ func _sequencer_main_loop() -> void:
 
 		var manifest = await _fetch_json(http_manifest, "shows/manifest.json")
 		var episodes: Array = manifest.get("episodes", []) if typeof(manifest) == TYPE_DICTIONARY else []
+		DisplayServer.window_set_title("DBG M:%s n=%d" % [str(typeof(manifest)), episodes.size()])
 		if episodes.is_empty():
 			await get_tree().create_timer(SEQ_RETRY_WAIT).timeout
 			continue
@@ -401,10 +402,12 @@ func _sequencer_main_loop() -> void:
 		forced_id = ""  # only honor the deep link/forced pick once
 
 		var ep_path: String = chosen.get("path", "") if typeof(chosen) == TYPE_DICTIONARY else ""
+		DisplayServer.window_set_title("DBG P:%s" % ep_path)
 		var episode = null
 		if ep_path != "":
 			episode = await _fetch_json(http_episode, ep_path)
 		episode_events = episode.get("events", []) if typeof(episode) == TYPE_DICTIONARY else []
+		DisplayServer.window_set_title("DBG E:%s n=%d" % [str(typeof(episode)), episode_events.size()])
 		if episode_events.is_empty():
 			await get_tree().create_timer(SEQ_RETRY_WAIT).timeout
 			continue
