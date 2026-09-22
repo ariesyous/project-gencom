@@ -294,7 +294,17 @@ func _get_requested_episode_id() -> String:
 	return ""
 
 func _resolve_url(path: String) -> String:
-	return path if OS.has_feature("web") else LOCAL_DEV_BASE_URL + path
+	# Godot's HTTPRequest (even under Web export) needs a fully absolute URL —
+	# a browser-style relative path like "shows/manifest.json" fails with
+	# "Invalid URL scheme" — so build one from the page's own location. This
+	# also makes it work when the site is served from a subpath (e.g. GitHub
+	# Pages' <user>.github.io/<repo>/), since it resolves against the page's
+	# actual directory rather than assuming the domain root.
+	if OS.has_feature("web"):
+		var base = JavaScriptBridge.eval(
+			"window.location.origin + window.location.pathname.replace(/[^/]*$/, '')", true)
+		return str(base) + path
+	return LOCAL_DEV_BASE_URL + path
 
 func _fetch_json(req: HTTPRequest, path: String) -> Variant:
 	# Fetch + parse a JSON document. Returns null on any failure.
