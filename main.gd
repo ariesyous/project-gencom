@@ -95,6 +95,7 @@ var http_audio: HTTPRequest
 # browser's native fetch() via JavaScriptBridge instead (see _web_fetch_*).
 var _web_fetch_results := {}
 var _web_fetch_next_id := 0
+var _web_window: JavaScriptObject  # cached window interface, Web only
 var episode_base_url := ""
 var episode_events: Array = []
 var episode_index := 0
@@ -137,14 +138,15 @@ func _ready() -> void:
 	http_audio = HTTPRequest.new(); add_child(http_audio)
 
 	if OS.has_feature("web"):
+		_web_window = JavaScriptBridge.get_interface("window")
 		# Let the in-page menu (injected via html/head_include, see
 		# export_presets.cfg) tell a running instance to jump to a specific
 		# episode without reloading the page.
-		JavaScriptBridge.get_interface("window").godot_load_episode = JavaScriptBridge.create_callback(_js_load_episode)
-		# Completion callbacks for the browser-fetch() bridge (_web_fetch_text/
-		# _web_fetch_binary) — see the gzip note near _web_fetch_results above.
-		JavaScriptBridge.get_interface("window").__godotFetchTextDone = JavaScriptBridge.create_callback(_on_web_fetch_done)
-		JavaScriptBridge.get_interface("window").__godotFetchBinaryDone = JavaScriptBridge.create_callback(_on_web_fetch_done)
+		_web_window.godot_load_episode = JavaScriptBridge.create_callback(_js_load_episode)
+		# Completion callbacks for the browser-fetch() bridge (_web_fetch) —
+		# see the gzip note near _web_fetch_results above.
+		_web_window.__godotFetchTextDone = JavaScriptBridge.create_callback(_on_web_fetch_done)
+		_web_window.__godotFetchBinaryDone = JavaScriptBridge.create_callback(_on_web_fetch_done)
 
 	_sequencer_main_loop()
 
@@ -332,8 +334,13 @@ func _web_fetch(kind: String, url: String) -> Variant:
 	# decoded from base64 (kind="binary"), or null on failure.
 	var id := _web_fetch_next_id
 	_web_fetch_next_id += 1
-	var fn := "__webFetchText" if kind == "text" else "__webFetchBinary"
-	JavaScriptBridge.eval("%s(%d, %s)" % [fn, id, JSON.stringify(url)])
+	# Call the JS function directly as a method on the window interface —
+	# more robust than templating a JavaScriptBridge.eval() string (no
+	# quoting/escaping concerns, and args are marshalled natively).
+	if kind == "text":
+		_web_window.__webFetchText(id, url)
+	else:
+		_web_window.__webFetchBinary(id, url)
 	while not _web_fetch_results.has(id):
 		await get_tree().process_frame
 	var res: Dictionary = _web_fetch_results[id]
