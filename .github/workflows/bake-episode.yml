@@ -15,6 +15,7 @@ on:
         options:
           - "deepseek/deepseek-v4.1-flash"
           - "openai/gpt-oss-120b"
+          - "openai/gpt-6-luna"
           - "openrouter/free"
 
 permissions:
