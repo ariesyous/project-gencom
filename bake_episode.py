@@ -197,7 +197,11 @@ async def generate_episode(client, topic, memory=()):
 			max_tokens=2000,
 			response_format={"type": "json_object"}
 		)
-		return completion.choices[0].message.content
+		choice = completion.choices[0]
+		if choice.message.content is None:
+			print(f"[Error] LLM returned no content. finish_reason={choice.finish_reason!r} "
+				f"full_choice={choice.model_dump()!r}")
+		return choice.message.content
 
 	try:
 		raw_text = await loop.run_in_executor(None, call_llm)
