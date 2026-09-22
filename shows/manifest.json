@@ -1,3 +1,10 @@
 {
-  "episodes": []
+  "episodes": [
+    {
+      "id": "ep0001",
+      "theme": "Rep the 6ix without getting priced out of it",
+      "aired_at": "2026-09-22T22:20:27.266939+00:00",
+      "path": "shows/ep0001/episode.json"
+    }
+  ]
 }

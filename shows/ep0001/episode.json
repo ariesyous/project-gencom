@@ -1,0 +1,299 @@
+{
+  "id": "ep0001",
+  "theme": "Rep the 6ix without getting priced out of it",
+  "callback": "licence plate 'THE 6IX'",
+  "generated_at": "2026-09-22T22:20:27.266939+00:00",
+  "model": "deepseek/deepseek-v4.1-flash",
+  "events": [
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line000.mp3",
+      "text": "Okay, hot take: I think I finally understand Drake.",
+      "laugh": false,
+      "duration_s": 4.1
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line001.mp3",
+      "text": "You've lived here six years and you just now got it?",
+      "laugh": false,
+      "duration_s": 3.46
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line002.mp3",
+      "text": "No no, I always *liked* him. I mean I get the *job*. He's basically the city's hype man with a platinum record deal.",
+      "laugh": false,
+      "duration_s": 9.05
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line003.mp3",
+      "text": "He put the CN Tower on an album cover and the whole world went 'ohhh it's a big needle.' We've been looking at that thing our whole lives.",
+      "laugh": false,
+      "duration_s": 8.42
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line004.mp3",
+      "text": "I proposed to you under it. Well - I proposed on the lawn, and the Tower just sort of loomed. Very romantic looming.",
+      "laugh": true,
+      "duration_s": 8.98
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "coffee_shop"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line005.mp3",
+      "text": "Two double-doubles and a box of Timbits - twenty of them, and if you give me a single birthday-cake one I'm walking out.",
+      "laugh": false,
+      "duration_s": 7.15
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line006.mp3",
+      "text": "She means it. We had a whole incident in 2021.",
+      "laugh": false,
+      "duration_s": 5.21
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line007.mp3",
+      "text": "Anyway. The lineup's out the door because it's minus twelve and everyone discovered the drive-thru is somehow slower than walking.",
+      "laugh": false,
+      "duration_s": 8.21
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line008.mp3",
+      "text": "That's the 6ix in one image: eight lanes of traffic, everyone still taking the streetcar.",
+      "laugh": false,
+      "duration_s": 5.83
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line009.mp3",
+      "text": "Because the streetcar actually shows up, babe. Mostly.",
+      "laugh": false,
+      "duration_s": 4.99
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line010.mp3",
+      "text": "It 'shows up' the way Drake 'shows up' at a Raptors game - eventually, and in a very nice coat.",
+      "laugh": true,
+      "duration_s": 5.62
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "grocery"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line011.mp3",
+      "text": "Alan! Bridgette! You will not *believe* what the No Thrills on the corner is doing.",
+      "laugh": false,
+      "duration_s": 4.06
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line012.mp3",
+      "text": "Kessler, we're just here for eggs.",
+      "laugh": false,
+      "duration_s": 3.02
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line013.mp3",
+      "text": "Eggs, sure, but also - they've got a whole bin of 'Toronto-exclusive' hot sauce. It's just regular hot sauce with the CN Tower on it. Six ninety-nine!",
+      "laugh": false,
+      "duration_s": 9.0
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line014.mp3",
+      "text": "So it's... the normal hot sauce, but it knows where it lives.",
+      "laugh": false,
+      "duration_s": 4.06
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line015.mp3",
+      "text": "Exactly! You understand! I bought nine.",
+      "laugh": false,
+      "duration_s": 2.78
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line016.mp3",
+      "text": "Why nine?",
+      "laugh": false,
+      "duration_s": 1.87
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line017.mp3",
+      "text": "One for each million people who claim they were at that Raptors parade. Gotta go - my streetcar's coming, allegedly.",
+      "laugh": true,
+      "duration_s": 5.81
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "apartment"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line018.mp3",
+      "text": "Okay, real talk. I love that song, I love the Tower, I love this dumb cold city. But I feel like a fraud repping the 6ix when my rent just went up again.",
+      "laugh": false,
+      "duration_s": 11.74
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line019.mp3",
+      "text": "...yeah. The city's been gentrifying the *us* right out of it.",
+      "laugh": false,
+      "duration_s": 4.9
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line020.mp3",
+      "text": "My parents' whole street used to be bakeries and a guy who fixed vacuums. Now it's a boutique that sells - I'm not kidding - artisanal ice for ten dollars.",
+      "laugh": false,
+      "duration_s": 10.13
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line021.mp3",
+      "text": "The 6ix is a Drake album and a CN Tower and also a landlord who calls your apartment a 'junior one-bedroom.'",
+      "laugh": false,
+      "duration_s": 6.74
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line022.mp3",
+      "text": "Still. We're here. We're repping. Even if we're repping from a slightly smaller square footage.",
+      "laugh": false,
+      "duration_s": 8.57
+    },
+    {
+      "type": "play_stinger"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line023.mp3",
+      "text": "So I did a thing.",
+      "laugh": false,
+      "duration_s": 2.14
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line024.mp3",
+      "text": "Oh no.",
+      "laugh": false,
+      "duration_s": 1.87
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line025.mp3",
+      "text": "I got us custom licence plates. Official. 'T-H-E-6-I-X.' Because we're not leaving. We're just gonna be *here*, loudly, forever.",
+      "laugh": false,
+      "duration_s": 11.11
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line026.mp3",
+      "text": "You spent money on this. In this economy.",
+      "laugh": false,
+      "duration_s": 4.3
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line027.mp3",
+      "text": "Sixty dollars. And honestly? Worth it. Now every time we drive anywhere, the whole city knows we're repping it.",
+      "laugh": false,
+      "duration_s": 9.79
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line028.mp3",
+      "text": "You don't own a car.",
+      "laugh": false,
+      "duration_s": 2.04
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line029.mp3",
+      "text": "...They'll look great on the fridge.",
+      "laugh": false,
+      "duration_s": 2.52
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line030.mp3",
+      "text": "They'll look great on the fridge. Come here, you absolute menace of a Torontonian.",
+      "laugh": true,
+      "duration_s": 6.22
+    },
+    {
+      "type": "trigger_laugh"
+    }
+  ]
+}
