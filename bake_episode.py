@@ -198,13 +198,15 @@ async def generate_episode(client, topic, memory=()):
 			response_format={"type": "json_object"}
 		)
 		choice = completion.choices[0]
-		if choice.message.content is None:
-			print(f"[Error] LLM returned no content. finish_reason={choice.finish_reason!r} "
+		if not choice.message.content:
+			print(f"[Error] LLM returned empty content. finish_reason={choice.finish_reason!r} "
 				f"full_choice={choice.model_dump()!r}")
 		return choice.message.content
 
 	try:
 		raw_text = await loop.run_in_executor(None, call_llm)
+		if not raw_text:
+			return None
 		data = json.loads(raw_text)
 
 		# Find the list of skits. Ideally data["skits"]; tolerate bare arrays and
