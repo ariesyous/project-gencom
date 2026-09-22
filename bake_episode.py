@@ -24,9 +24,10 @@ from audio_timing import mp3_duration
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 # Daily scheduled runs use this default; workflow_dispatch can override via
-# the OPENROUTER_MODEL env var (see .github/workflows/bake-episode.yml),
-# mirroring the pattern already used in github.com/ariesyous/openfeed.
-MODEL_NAME = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
+# the OPENROUTER_MODEL env var (see .github/workflows/bake-episode.yml).
+# openrouter/free re-picks a random underlying model per call and hit
+# empty/invalid completions often enough that it's opt-in only for now.
+MODEL_NAME = os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-v4.1-flash")
 
 SHOWS_DIR = "./shows"
 MANIFEST_PATH = os.path.join(SHOWS_DIR, "manifest.json")

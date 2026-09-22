@@ -10,12 +10,12 @@ on:
       model:
         description: "OpenRouter model slug to use for this run only"
         required: false
-        default: "openrouter/free"
+        default: "deepseek/deepseek-v4.1-flash"
         type: choice
         options:
-          - "openrouter/free"
-          - "openai/gpt-oss-120b"
           - "deepseek/deepseek-v4.1-flash"
+          - "openai/gpt-oss-120b"
+          - "openrouter/free"
 
 permissions:
   contents: write
@@ -44,10 +44,10 @@ jobs:
       - name: Bake episode
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          # openrouter/free is a convenience default for manual test runs only —
-          # scheduled bakes use a real named model (same split as
-          # ariesyous/openfeed's generate.yml, which hit empty/flaky completions
-          # from openrouter/free often enough that production runs avoid it).
+          # Default is a real named model. openrouter/free re-picks a random
+          # underlying model per call and hit empty/invalid completions often
+          # enough (see commit history) that it's opt-in only for now via
+          # workflow_dispatch, not the scheduled default.
           OPENROUTER_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model || 'deepseek/deepseek-v4.1-flash' }}
         run: python bake_episode.py
 
