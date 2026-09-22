@@ -1,0 +1,299 @@
+{
+  "id": "ep0002",
+  "theme": "Alan and Bridgette plumb the deep sea from the comfort of their couch",
+  "callback": "the licence plate THE 6IX",
+  "generated_at": "2026-09-22T22:27:03.534311+00:00",
+  "model": "deepseek/deepseek-v4.1-flash",
+  "events": [
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line000.mp3",
+      "text": "Okay, put your phone down, I'm about to change your whole evening.",
+      "laugh": false,
+      "duration_s": 4.37
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line001.mp3",
+      "text": "Is it a documentary? Please say it's a deep-ocean documentary.",
+      "laugh": false,
+      "duration_s": 5.38
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line002.mp3",
+      "text": "It's a deep-ocean documentary.",
+      "laugh": false,
+      "duration_s": 2.66
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line003.mp3",
+      "text": "Bridgette. We've been together three years. I've never been more attracted to you than right now.",
+      "laugh": false,
+      "duration_s": 7.58
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line004.mp3",
+      "text": "The Mariana Trench goes down almost eleven kilometres. If you dropped Mount Everest in it, the peak would still be over two kilometres underwater.",
+      "laugh": false,
+      "duration_s": 9.41
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line005.mp3",
+      "text": "So you're telling me we have an entire Everest sitting down there just... waiting, like a dog nobody walks.",
+      "laugh": true,
+      "duration_s": 6.22
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "play_stinger"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line006.mp3",
+      "text": "Okay, but here's my thing. We spent all week complaining we can't afford a one-bedroom in this city, and there's a fish down there literally growing its own lamp.",
+      "laugh": false,
+      "duration_s": 9.77
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line007.mp3",
+      "text": "The anglerfish. The little lure dangles off its head and glows.",
+      "laugh": false,
+      "duration_s": 5.14
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line008.mp3",
+      "text": "It glows? Like a tiny headlamp.",
+      "laugh": false,
+      "duration_s": 3.98
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line009.mp3",
+      "text": "Bacteria living inside it make the light. The fish just rents the glow.",
+      "laugh": false,
+      "duration_s": 5.64
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line010.mp3",
+      "text": "So even the deep-sea fish is subletting. That's so Toronto.",
+      "laugh": true,
+      "duration_s": 5.33
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line011.mp3",
+      "text": "And the males? Some of them bite onto the female and just... fuse. Become part of her, permanently.",
+      "laugh": false,
+      "duration_s": 8.26
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line012.mp3",
+      "text": "Okay so my strategy of attaching myself to you and never getting a real job is officially scientifically valid.",
+      "laugh": false,
+      "duration_s": 6.72
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line013.mp3",
+      "text": "You've been reading the Wikipedia tab at 2 a.m. again, haven't you?",
+      "laugh": false,
+      "duration_s": 4.46
+    },
+    {
+      "type": "set_scene",
+      "scene": "coffee_shop"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line014.mp3",
+      "text": "So what's the actual point of your deep-sea binge, you're not quitting your job to be an anglerfish.",
+      "laugh": false,
+      "duration_s": 5.81
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line015.mp3",
+      "text": "No, but listen \u2014 most of the ocean's deep zones have never been mapped in detail. We've got better maps of Mars than of our own seafloor.",
+      "laugh": false,
+      "duration_s": 8.74
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line016.mp3",
+      "text": "That's the most 'you' fact I've heard all week. Mars gets a nicer map than Lake Ontario.",
+      "laugh": false,
+      "duration_s": 6.34
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line017.mp3",
+      "text": "It's the same instinct. You look at the dark and you want to know what's in it.",
+      "laugh": false,
+      "duration_s": 5.64
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line018.mp3",
+      "text": "And what's in it, according to you, is a fish with a face like a porch light.",
+      "laugh": false,
+      "duration_s": 4.99
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line019.mp3",
+      "text": "The anglerfish, yeah. The little lure glows because of bacteria living inside it. Bioluminescence. A whole roommate situation.",
+      "laugh": false,
+      "duration_s": 10.94
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line020.mp3",
+      "text": "So it's not even its own light. It's subletting the glow. In this economy?",
+      "laugh": true,
+      "duration_s": 6.62
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "apartment"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line021.mp3",
+      "text": "And the weird part is, we've only mapped a small fraction of the ocean floor in high detail. There's more ocean than there is land, and most of it we've just... glanced at.",
+      "laugh": false,
+      "duration_s": 10.1
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line022.mp3",
+      "text": "So we're sitting on a planet that's mostly a mystery, and we named the moon better than we named the deep.",
+      "laugh": false,
+      "duration_s": 6.02
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line023.mp3",
+      "text": "They call it the hadal zone. Like Hades. Because it's basically the underworld down there.",
+      "laugh": false,
+      "duration_s": 7.68
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line024.mp3",
+      "text": "Great. So we live above a haunted basement and we still can't get rent under two thousand.",
+      "laugh": false,
+      "duration_s": 6.38
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line025.mp3",
+      "text": "Different deep sea. Same pressure though.",
+      "laugh": false,
+      "duration_s": 4.2
+    },
+    {
+      "type": "set_scene",
+      "scene": "coffee_shop"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line026.mp3",
+      "text": "Double-double and a box of Timbits, we're fueling this expedition properly.",
+      "laugh": false,
+      "duration_s": 5.21
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line027.mp3",
+      "text": "I feel like the anglerfish would absolutely order a double-double. Whole camouflage, then a light appears.",
+      "laugh": false,
+      "duration_s": 7.39
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line028.mp3",
+      "text": "And the light is just a tiny Timbit on a fishing line.",
+      "laugh": false,
+      "duration_s": 3.7
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line029.mp3",
+      "text": "Okay that's genuinely how it works, the lure is a modified fin with glowing bacteria living on it. Symbiosis. The bacteria glow, the fish gets dinner.",
+      "laugh": false,
+      "duration_s": 11.42
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line030.mp3",
+      "text": "So it's a partnership. One glows, the other eats. That's just us, but with more teeth.",
+      "laugh": true,
+      "duration_s": 7.82
+    },
+    {
+      "type": "trigger_laugh"
+    }
+  ]
+}
