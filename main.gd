@@ -86,6 +86,15 @@ const LOCAL_DEV_BASE_URL := "http://localhost:8000/"
 var http_manifest: HTTPRequest
 var http_episode: HTTPRequest
 var http_audio: HTTPRequest
+# GitHub Pages (and most static hosts) gzip every response. Godot's own
+# HTTPRequest/HTTPClient on Web export mishandles that — the browser's fetch
+# layer already transparently decompresses the body before Godot's WASM code
+# sees it, but Godot's gzip-aware StreamPeerGZIP still tries to decompress it
+# again and fails ("stream_peer_gzip.cpp" / RESULT_REQUEST_FAILED) — so on
+# Web, all networking bypasses HTTPRequest entirely and goes through the
+# browser's native fetch() via JavaScriptBridge instead (see _web_fetch_*).
+var _web_fetch_results := {}
+var _web_fetch_next_id := 0
 var episode_base_url := ""
 var episode_events: Array = []
 var episode_index := 0
@@ -127,10 +136,15 @@ func _ready() -> void:
 	http_episode = HTTPRequest.new(); add_child(http_episode)
 	http_audio = HTTPRequest.new(); add_child(http_audio)
 
-	# Let the in-page menu (see www/app.js) tell a running instance to jump to
-	# a specific episode without reloading the page.
 	if OS.has_feature("web"):
+		# Let the in-page menu (injected via html/head_include, see
+		# export_presets.cfg) tell a running instance to jump to a specific
+		# episode without reloading the page.
 		JavaScriptBridge.get_interface("window").godot_load_episode = JavaScriptBridge.create_callback(_js_load_episode)
+		# Completion callbacks for the browser-fetch() bridge (_web_fetch_text/
+		# _web_fetch_binary) — see the gzip note near _web_fetch_results above.
+		JavaScriptBridge.get_interface("window").__godotFetchTextDone = JavaScriptBridge.create_callback(_on_web_fetch_done)
+		JavaScriptBridge.get_interface("window").__godotFetchBinaryDone = JavaScriptBridge.create_callback(_on_web_fetch_done)
 
 	_sequencer_main_loop()
 
@@ -306,19 +320,49 @@ func _resolve_url(path: String) -> String:
 		return str(base) + path
 	return LOCAL_DEV_BASE_URL + path
 
+func _on_web_fetch_done(args: Array) -> void:
+	# args: [id, ok, data]. data is raw text for a text fetch, base64 for binary.
+	_web_fetch_results[int(args[0])] = {"ok": bool(args[1]), "data": args[2]}
+
+func _web_fetch(kind: String, url: String) -> Variant:
+	# Drives the browser's native fetch() via a JS function injected in
+	# html/head_include (export_presets.cfg), since Godot's own HTTPRequest
+	# can't be used for Web fetches here (see the gzip note near
+	# _web_fetch_results). Returns raw text (kind="text") or a PackedByteArray
+	# decoded from base64 (kind="binary"), or null on failure.
+	var id := _web_fetch_next_id
+	_web_fetch_next_id += 1
+	var fn := "__webFetchText" if kind == "text" else "__webFetchBinary"
+	JavaScriptBridge.eval("%s(%d, %s)" % [fn, id, JSON.stringify(url)])
+	while not _web_fetch_results.has(id):
+		await get_tree().process_frame
+	var res: Dictionary = _web_fetch_results[id]
+	_web_fetch_results.erase(id)
+	if not res["ok"]:
+		print("Sequencer: web fetch failed for ", url, " (", res["data"], ")")
+		return null
+	return res["data"] if kind == "text" else Marshalls.base64_to_raw(str(res["data"]))
+
 func _fetch_json(req: HTTPRequest, path: String) -> Variant:
 	# Fetch + parse a JSON document. Returns null on any failure.
 	var url := _resolve_url(path)
-	var err = req.request(url)
-	if err != OK:
-		print("Sequencer: failed to request ", url, " (", err, ")")
-		return null
-	var res: Array = await req.request_completed
-	if res[0] != HTTPRequest.RESULT_SUCCESS or res[1] != 200:
-		print("Sequencer: fetch failed for ", url, " (result=", res[0], " code=", res[1], ")")
-		return null
+	var raw_text
+	if OS.has_feature("web"):
+		raw_text = await _web_fetch("text", url)
+		if raw_text == null:
+			return null
+	else:
+		var err = req.request(url)
+		if err != OK:
+			print("Sequencer: failed to request ", url, " (", err, ")")
+			return null
+		var res: Array = await req.request_completed
+		if res[0] != HTTPRequest.RESULT_SUCCESS or res[1] != 200:
+			print("Sequencer: fetch failed for ", url, " (result=", res[0], " code=", res[1], ")")
+			return null
+		raw_text = res[3].get_string_from_utf8()
 	var json := JSON.new()
-	if json.parse(res[3].get_string_from_utf8()) != OK:
+	if json.parse(raw_text) != OK:
 		print("Sequencer: bad JSON from ", url)
 		return null
 	return json.data
@@ -391,15 +435,23 @@ func _play_baked_line(ev: Dictionary) -> void:
 	var text: String = str(ev.get("text", ""))
 	if file == "" or not actors.has(actor_id):
 		return
-	var err = http_audio.request(_resolve_url(episode_base_url + file))
-	if err != OK:
-		print("Sequencer: failed to request audio ", file, " (", err, ")")
+	var url := _resolve_url(episode_base_url + file)
+	var bytes
+	if OS.has_feature("web"):
+		bytes = await _web_fetch("binary", url)
+	else:
+		var err = http_audio.request(url)
+		if err != OK:
+			print("Sequencer: failed to request audio ", file, " (", err, ")")
+			return
+		var res: Array = await http_audio.request_completed
+		if res[0] != HTTPRequest.RESULT_SUCCESS or res[1] != 200:
+			print("Sequencer: audio fetch failed for ", file)
+			return
+		bytes = res[3]
+	if bytes == null:
 		return
-	var res: Array = await http_audio.request_completed
-	if res[0] != HTTPRequest.RESULT_SUCCESS or res[1] != 200:
-		print("Sequencer: audio fetch failed for ", file)
-		return
-	play_line(res[3], actor_id, text)
+	play_line(bytes, actor_id, text)
 	while actors[actor_id]["speaking"]:
 		await get_tree().process_frame
 	await get_tree().create_timer(SEQ_LINE_PAUSE).timeout
