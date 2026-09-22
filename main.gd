@@ -93,7 +93,6 @@ var http_audio: HTTPRequest
 # again and fails ("stream_peer_gzip.cpp" / RESULT_REQUEST_FAILED) — so on
 # Web, all networking bypasses HTTPRequest entirely and goes through the
 # browser's native fetch() via JavaScriptBridge instead (see _web_fetch_*).
-var _web_fetch_results := {}
 var _web_fetch_next_id := 0
 var _web_window: JavaScriptObject  # cached window interface, Web only
 var episode_base_url := ""
@@ -143,10 +142,6 @@ func _ready() -> void:
 		# export_presets.cfg) tell a running instance to jump to a specific
 		# episode without reloading the page.
 		_web_window.godot_load_episode = JavaScriptBridge.create_callback(_js_load_episode)
-		# Completion callbacks for the browser-fetch() bridge (_web_fetch) —
-		# see the gzip note near _web_fetch_results above.
-		_web_window.__godotFetchTextDone = JavaScriptBridge.create_callback(_on_web_fetch_done)
-		_web_window.__godotFetchBinaryDone = JavaScriptBridge.create_callback(_on_web_fetch_done)
 
 	_sequencer_main_loop()
 
@@ -322,31 +317,38 @@ func _resolve_url(path: String) -> String:
 		return str(base) + path
 	return LOCAL_DEV_BASE_URL + path
 
-func _on_web_fetch_done(args: Array) -> void:
-	# args: [id, ok, data]. data is raw text for a text fetch, base64 for binary.
-	_web_fetch_results[int(args[0])] = {"ok": bool(args[1]), "data": args[2]}
-
 func _web_fetch(kind: String, url: String) -> Variant:
 	# Drives the browser's native fetch() via a JS function injected in
 	# html/head_include (export_presets.cfg), since Godot's own HTTPRequest
-	# can't be used for Web fetches here (see the gzip note near
-	# _web_fetch_results). Returns raw text (kind="text") or a PackedByteArray
-	# decoded from base64 (kind="binary"), or null on failure.
+	# can't be used for Web fetches here — GitHub Pages gzips responses, the
+	# browser's fetch() already decompresses them, but Godot's own HTTPClient
+	# on Web still tries to gzip-decode the already-decoded body and fails.
+	# Returns raw text (kind="text") or a PackedByteArray decoded from base64
+	# (kind="binary"), or null on failure.
+	#
+	# This polls a plain JS object via repeated eval() round-trips instead of
+	# using JavaScriptBridge.create_callback() for the completion signal.
+	# create_callback here reliably registered (typeof checks confirmed a
+	# real bound function) and the triggering call never threw, but the
+	# callback itself was never observed to fire for the async fetch
+	# continuation — while plain JavaScriptBridge.eval() round-trips (queried
+	# every frame) worked reliably in every isolated test. Root cause not
+	# fully identified; polling sidesteps it entirely.
 	var id := _web_fetch_next_id
 	_web_fetch_next_id += 1
-	# Call the JS function directly as a method on the window interface —
-	# more robust than templating a JavaScriptBridge.eval() string (no
-	# quoting/escaping concerns, and args are marshalled natively).
-	if kind == "text":
-		_web_window.__webFetchText(id, url)
-	else:
-		_web_window.__webFetchBinary(id, url)
-	while not _web_fetch_results.has(id):
+	var fn := "window.__webFetchText" if kind == "text" else "window.__webFetchBinary"
+	JavaScriptBridge.eval("%s(%d, %s)" % [fn, id, JSON.stringify(url)], true)
+	var res: Dictionary = {}
+	while res.is_empty():
 		await get_tree().process_frame
-	var res: Dictionary = _web_fetch_results[id]
-	_web_fetch_results.erase(id)
-	if not res["ok"]:
-		print("Sequencer: web fetch failed for ", url, " (", res["data"], ")")
+		var raw = JavaScriptBridge.eval("JSON.stringify(window.__webFetchResults[%d] || null)" % id, true)
+		if typeof(raw) == TYPE_STRING and raw != "null":
+			var json := JSON.new()
+			if json.parse(raw) == OK and typeof(json.data) == TYPE_DICTIONARY:
+				res = json.data
+	JavaScriptBridge.eval("delete window.__webFetchResults[%d]" % id, true)
+	if not res.get("ok", false):
+		print("Sequencer: web fetch failed for ", url, " (", res.get("data", ""), ")")
 		return null
 	return res["data"] if kind == "text" else Marshalls.base64_to_raw(str(res["data"]))
 
@@ -393,7 +395,6 @@ func _sequencer_main_loop() -> void:
 
 		var manifest = await _fetch_json(http_manifest, "shows/manifest.json")
 		var episodes: Array = manifest.get("episodes", []) if typeof(manifest) == TYPE_DICTIONARY else []
-		DisplayServer.window_set_title("DBG M:%s n=%d" % [str(typeof(manifest)), episodes.size()])
 		if episodes.is_empty():
 			await get_tree().create_timer(SEQ_RETRY_WAIT).timeout
 			continue
@@ -402,12 +403,10 @@ func _sequencer_main_loop() -> void:
 		forced_id = ""  # only honor the deep link/forced pick once
 
 		var ep_path: String = chosen.get("path", "") if typeof(chosen) == TYPE_DICTIONARY else ""
-		DisplayServer.window_set_title("DBG P:%s" % ep_path)
 		var episode = null
 		if ep_path != "":
 			episode = await _fetch_json(http_episode, ep_path)
 		episode_events = episode.get("events", []) if typeof(episode) == TYPE_DICTIONARY else []
-		DisplayServer.window_set_title("DBG E:%s n=%d" % [str(typeof(episode)), episode_events.size()])
 		if episode_events.is_empty():
 			await get_tree().create_timer(SEQ_RETRY_WAIT).timeout
 			continue
