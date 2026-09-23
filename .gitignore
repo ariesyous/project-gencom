@@ -19,6 +19,9 @@ shows/**/*.mp3.import
 # Secrets and local scripts
 start_comedy.ps1
 
+# Personal Claude Code settings (local permissions, not meant to be shared)
+.claude/settings.local.json
+
 # godot-ai MCP plugin (self-updating; reinstall from upstream, not tracked here)
 addons/godot_ai/
 godot-ai-LICENSE.txt

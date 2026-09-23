@@ -1,5 +1,11 @@
 # AI Sitcom Studio: Alan & Bridgette
 
+**▶️ [Watch the live show](https://ariesyous.github.io/project-gencom/)**
+
+[![Bake Episode](https://github.com/ariesyous/project-gencom/actions/workflows/bake-episode.yml/badge.svg)](https://github.com/ariesyous/project-gencom/actions/workflows/bake-episode.yml)
+[![Deploy Pages](https://github.com/ariesyous/project-gencom/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/ariesyous/project-gencom/actions/workflows/deploy-pages.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 An automated 3D sitcom, baked daily and hosted for free on GitHub Pages, powered by Godot 4 (Web export) and an LLM via OpenRouter.
 
 ## 🎭 Overview
@@ -50,4 +56,7 @@ python -m http.server 8000
 Then open the project in Godot and press **Play** (F5) — `main.gd`'s `LOCAL_DEV_BASE_URL` points at `http://localhost:8000/`.
 
 ## 📖 Further Reading
-- For AI agents looking to contribute, see [CLAUDE.md](./CLAUDE.md).
+- For AI agents looking to contribute, see [AGENTS.md](./AGENTS.md).
+
+## License
+MIT — see [LICENSE](./LICENSE).
