@@ -12,6 +12,7 @@ import asyncio
 import json
 import os
 import random
+import re
 from collections import deque
 from datetime import datetime, timezone
 
@@ -28,6 +29,10 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 # openrouter/free re-picks a random underlying model per call and hit
 # empty/invalid completions often enough that it's opt-in only for now.
 MODEL_NAME = os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-v4.1-flash")
+
+# The prompt asks for a literal '[LAUGH]', but models drift ('[laugh]',
+# '(laughs)', '*LAUGH*'); accept any bracketed/starred laugh marker.
+LAUGH_MARKER = re.compile(r"\s*[\[(*]\s*laugh(?:s|ter)?\s*[\])*]", re.IGNORECASE)
 
 SHOWS_DIR = "./shows"
 MANIFEST_PATH = os.path.join(SHOWS_DIR, "manifest.json")
@@ -373,14 +378,15 @@ async def bake_one_episode() -> bool:
 			events.append({"type": "play_stinger"})
 
 		events.append({"type": "skit_boundary"})
+		skit_has_laugh = False
 
 		for entry in skit["lines"]:
 			actor = entry.get("actor", "A")
 			raw_line = entry.get("line", "")
 			if not raw_line:
 				continue
-			has_laugh = "[LAUGH]" in raw_line
-			line = raw_line.replace("[LAUGH]", "").strip()
+			has_laugh = bool(LAUGH_MARKER.search(raw_line))
+			line = LAUGH_MARKER.sub("", raw_line).strip()
 			if not line:
 				continue
 
@@ -403,6 +409,14 @@ async def bake_one_episode() -> bool:
 			})
 			if has_laugh:
 				events.append({"type": "trigger_laugh"})
+				skit_has_laugh = True
+
+		# Some models ignore the marker entirely, which silently ships a
+		# laugh-free episode. Each skit is written to end on its punchline, so
+		# fall back to a laugh after the skit's last line.
+		if not skit_has_laugh and events and events[-1]["type"] == "play_audio":
+			events[-1]["laugh"] = True
+			events.append({"type": "trigger_laugh"})
 
 	if not any_line_ok:
 		print("[Error] No usable audio was produced for this episode; aborting bake.")

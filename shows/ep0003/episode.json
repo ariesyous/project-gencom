@@ -45,8 +45,11 @@
       "actor": "A",
       "file": "audio/line004.mp3",
       "text": "It\u2019s already the tallest thing in the room, and now it has vanity plates.",
-      "laugh": false,
+      "laugh": true,
       "duration_s": 4.68
+    },
+    {
+      "type": "trigger_laugh"
     },
     {
       "type": "set_scene",
@@ -92,8 +95,11 @@
       "actor": "B",
       "file": "audio/line009.mp3",
       "text": "Let\u2019s get double-doubles. We\u2019re going to need steady hands for the glass floor.",
-      "laugh": false,
+      "laugh": true,
       "duration_s": 5.69
+    },
+    {
+      "type": "trigger_laugh"
     },
     {
       "type": "set_scene",
@@ -147,8 +153,11 @@
       "actor": "B",
       "file": "audio/line015.mp3",
       "text": "We\u2019re getting apples. They\u2019ve been quietly dependable this whole time.",
-      "laugh": false,
+      "laugh": true,
       "duration_s": 5.28
+    },
+    {
+      "type": "trigger_laugh"
     },
     {
       "type": "set_scene",
@@ -218,8 +227,11 @@
       "actor": "B",
       "file": "audio/line023.mp3",
       "text": "THE 6IX. It can drive us home. We\u2019ll take the streetcar.",
-      "laugh": false,
+      "laugh": true,
       "duration_s": 6.05
+    },
+    {
+      "type": "trigger_laugh"
     }
   ]
 }
