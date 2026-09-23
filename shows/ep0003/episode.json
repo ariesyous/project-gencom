@@ -1,0 +1,225 @@
+{
+  "id": "ep0003",
+  "theme": "The CN Tower, one tiny step at a time",
+  "callback": "The tower gets its own licence plate",
+  "generated_at": "2026-09-23T20:16:49.207826+00:00",
+  "model": "openai/gpt-6-luna",
+  "events": [
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line000.mp3",
+      "text": "I booked us tickets for the CN Tower. Glass floor, lookout, the whole Toronto postcard.",
+      "laugh": false,
+      "duration_s": 6.94
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line001.mp3",
+      "text": "Excellent. I\u2019ll bring our emotional support snack.",
+      "laugh": false,
+      "duration_s": 4.49
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line002.mp3",
+      "text": "A granola bar?",
+      "laugh": false,
+      "duration_s": 2.11
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line003.mp3",
+      "text": "No. I\u2019ve made the tower a licence plate: THE 6IX. It\u2019s how we know it\u2019s ours.",
+      "laugh": false,
+      "duration_s": 7.44
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line004.mp3",
+      "text": "It\u2019s already the tallest thing in the room, and now it has vanity plates.",
+      "laugh": false,
+      "duration_s": 4.68
+    },
+    {
+      "type": "set_scene",
+      "scene": "coffee_shop"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line005.mp3",
+      "text": "I read the CN Tower was the world\u2019s tallest freestanding structure for more than three decades.",
+      "laugh": false,
+      "duration_s": 5.86
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line006.mp3",
+      "text": "That is a very long time to be the tallest person at a party.",
+      "laugh": false,
+      "duration_s": 4.3
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line007.mp3",
+      "text": "Then someone taller arrived, and the tower had to be gracious about it.",
+      "laugh": false,
+      "duration_s": 4.68
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line008.mp3",
+      "text": "I can relate. I was tallest in my family until my cousin got new shoes.",
+      "laugh": false,
+      "duration_s": 5.95
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line009.mp3",
+      "text": "Let\u2019s get double-doubles. We\u2019re going to need steady hands for the glass floor.",
+      "laugh": false,
+      "duration_s": 5.69
+    },
+    {
+      "type": "set_scene",
+      "scene": "grocery"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line010.mp3",
+      "text": "We need snacks for the tower. Something portable, not crumbly, not loud.",
+      "laugh": false,
+      "duration_s": 5.95
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line011.mp3",
+      "text": "So\u2026 a grape with good manners?",
+      "laugh": false,
+      "duration_s": 2.93
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line012.mp3",
+      "text": "The glass floor is a psychological negotiation! Bring a banana. It\u2019s naturally curved, so it knows how to handle a drop.",
+      "laugh": false,
+      "duration_s": 6.74
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line013.mp3",
+      "text": "That\u2019s not how bananas work, but I respect the confidence.",
+      "laugh": false,
+      "duration_s": 3.94
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line014.mp3",
+      "text": "Buy two. One for courage, one for the banana\u2019s counsel.",
+      "laugh": false,
+      "duration_s": 3.38
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line015.mp3",
+      "text": "We\u2019re getting apples. They\u2019ve been quietly dependable this whole time.",
+      "laugh": false,
+      "duration_s": 5.28
+    },
+    {
+      "type": "set_scene",
+      "scene": "apartment"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line016.mp3",
+      "text": "The glass floor was incredible. I could see the streets way down there\u2014and my own shoes having a separate opinion.",
+      "laugh": false,
+      "duration_s": 7.49
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line017.mp3",
+      "text": "You stepped out first. Then you held my hand like you were guiding me across a very high, very transparent puddle.",
+      "laugh": false,
+      "duration_s": 7.68
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line018.mp3",
+      "text": "And you stepped out too. That\u2019s the whole trick: we can be nervous at the same time.",
+      "laugh": false,
+      "duration_s": 6.1
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line019.mp3",
+      "text": "The EdgeWalk is outside the tower, clipped into a safety system. I admire it from the inside, with both feet and a window between us.",
+      "laugh": false,
+      "duration_s": 9.17
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line020.mp3",
+      "text": "The revolving restaurant turns slowly enough to enjoy the view. We could eat there someday.",
+      "laugh": false,
+      "duration_s": 6.22
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line021.mp3",
+      "text": "Perfect. We\u2019ll get a table by the window, share dessert, and let the city do the walking.",
+      "laugh": false,
+      "duration_s": 6.62
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line022.mp3",
+      "text": "And the tower\u2019s licence plate?",
+      "laugh": false,
+      "duration_s": 2.59
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line023.mp3",
+      "text": "THE 6IX. It can drive us home. We\u2019ll take the streetcar.",
+      "laugh": false,
+      "duration_s": 6.05
+    }
+  ]
+}
