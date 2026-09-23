@@ -1,0 +1,224 @@
+{
+  "id": "ep0004",
+  "theme": "The Matrix, with a side of choice paralysis",
+  "callback": "The Spoon Has Left the Chat",
+  "generated_at": "2026-09-23T20:19:54.189278+00:00",
+  "model": "openai/gpt-6-luna",
+  "events": [
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line000.mp3",
+      "text": "I watched The Matrix again. Red pill: learn the truth. Blue pill: go back to normal.",
+      "laugh": false,
+      "duration_s": 7.97
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line001.mp3",
+      "text": "So, red pill is a life-changing decision, blue pill is staying cozy.",
+      "laugh": false,
+      "duration_s": 5.33
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line002.mp3",
+      "text": "Exactly. Which is why I made us a third option.",
+      "laugh": false,
+      "duration_s": 4.63
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line003.mp3",
+      "text": "A third pill?",
+      "laugh": false,
+      "duration_s": 1.9
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line004.mp3",
+      "text": "A vitamin D gummy. We learn nothing, but our bones feel supported.",
+      "laugh": false,
+      "duration_s": 5.71
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line005.mp3",
+      "text": "The Spoon Has Left the Chat. It\u2019s in the vitamin drawer.",
+      "laugh": false,
+      "duration_s": 4.75
+    },
+    {
+      "type": "set_scene",
+      "scene": "coffee_shop"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line006.mp3",
+      "text": "The movie\u2019s big question is whether reality is a simulation. Mine is whether this lineup moves.",
+      "laugh": false,
+      "duration_s": 6.86
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line007.mp3",
+      "text": "A simulation would explain why the person ahead of us has been choosing a Timbits dozen for six minutes.",
+      "laugh": false,
+      "duration_s": 6.12
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line008.mp3",
+      "text": "Maybe they\u2019re testing every possible combination.",
+      "laugh": false,
+      "duration_s": 3.55
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line009.mp3",
+      "text": "The Matrix came out in 1999, and it made computer-generated reality feel like a very stylish nightmare.",
+      "laugh": false,
+      "duration_s": 7.22
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line010.mp3",
+      "text": "I\u2019ll take one double-double and a reality with fewer menu decisions.",
+      "laugh": false,
+      "duration_s": 4.51
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line011.mp3",
+      "text": "Careful. That\u2019s how the machines get you: unlimited customization.",
+      "laugh": false,
+      "duration_s": 5.64
+    },
+    {
+      "type": "set_scene",
+      "scene": "apartment"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line012.mp3",
+      "text": "I tried the spoon thing. \u2018There is no spoon.\u2019",
+      "laugh": false,
+      "duration_s": 4.22
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line013.mp3",
+      "text": "And?",
+      "laugh": false,
+      "duration_s": 1.87
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line014.mp3",
+      "text": "I stared at it until I realized the spoon was real, but my confidence wasn\u2019t.",
+      "laugh": false,
+      "duration_s": 5.04
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line015.mp3",
+      "text": "That\u2019s the trick in the movie: Neo learns to question what seems fixed inside the simulation.",
+      "laugh": false,
+      "duration_s": 5.88
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line016.mp3",
+      "text": "I questioned the spoon so hard it became a fork.",
+      "laugh": false,
+      "duration_s": 3.58
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line017.mp3",
+      "text": "That\u2019s because you were holding a fork.",
+      "laugh": false,
+      "duration_s": 2.83
+    },
+    {
+      "type": "play_stinger"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line018.mp3",
+      "text": "If we got offered the pills, I\u2019d want to talk it through first.",
+      "laugh": false,
+      "duration_s": 3.98
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line019.mp3",
+      "text": "Even if the whole world were a simulation?",
+      "laugh": false,
+      "duration_s": 3.34
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line020.mp3",
+      "text": "Especially then. I\u2019d want you beside me while we figure out what\u2019s real.",
+      "laugh": false,
+      "duration_s": 5.42
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line021.mp3",
+      "text": "Good. I\u2019d bring snacks, a notebook, and one spoon we both agree is a spoon.",
+      "laugh": false,
+      "duration_s": 6.12
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line022.mp3",
+      "text": "Whatever the universe is made of, it\u2019s nicer when we\u2019re investigating it together.",
+      "laugh": false,
+      "duration_s": 5.11
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line023.mp3",
+      "text": "And if the spoon disappears, we\u2019ll split the fork.",
+      "laugh": false,
+      "duration_s": 3.7
+    }
+  ]
+}
