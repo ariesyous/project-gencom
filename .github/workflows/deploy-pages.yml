@@ -40,7 +40,7 @@ jobs:
       - name: Hash Godot/frontend sources
         id: hash
         run: |
-          echo "value=${{ hashFiles('main.gd', 'main.tscn', 'project.godot', 'export_presets.cfg', 'materials/**') }}" >> "$GITHUB_OUTPUT"
+          echo "value=${{ hashFiles('main.gd', 'main.tscn', 'project.godot', 'export_presets.cfg', 'materials/**', 'audio/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Cache Web export
         id: cache-build

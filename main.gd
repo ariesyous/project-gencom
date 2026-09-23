@@ -704,12 +704,15 @@ func _play_clip(node_path: String, audio_path: String) -> void:
 	# Laughs/stingers are small, fixed, non-generated sound effects — they stay
 	# bundled in the exported PCK and load via res://, unlike episode dialogue
 	# (which the sequencer fetches over HTTP; see _play_baked_line).
-	if not FileAccess.file_exists(audio_path): return
-	var file = FileAccess.open(audio_path, FileAccess.READ)
-	if not file: return
+	# Must go through ResourceLoader, not FileAccess: exports only pack the
+	# imported .mp3str (via the .import remap), never the raw .mp3 source, so
+	# FileAccess finds nothing outside the editor.
+	if not ResourceLoader.exists(audio_path): return
+	var stream = load(audio_path) as AudioStream
+	if not stream: return
 	var player = get_node_or_null(node_path)
 	if not player: return
-	player.stream = _make_mp3_stream(file.get_buffer(file.get_length()))
+	player.stream = stream
 	player.play()
 
 func play_laugh() -> void:
