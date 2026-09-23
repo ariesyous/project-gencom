@@ -1944,12 +1944,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2, 0)
 material_override = SubResource("StandardMaterial3D_7mycd")
 size = Vector3(0.1, 4, 10)
 
-[node name="LaughPlayer" type="AudioStreamPlayer3D" parent="ApartmentEnvironment" unique_id=2147178480]
-volume_db = -8.0
-unit_size = 40.0
-max_distance = 100.0
-panning_strength = 0.5
-
 [node name="CameraAlan" type="Camera3D" parent="ApartmentEnvironment" unique_id=1229170638]
 transform = Transform3D(0.9396926, 0.088521324, -0.33036608, 0, 0.9659258, 0.25881904, 0.34202012, -0.24321035, 0.90767336, -2.7, 2.2, 6.3)
 fov = 37.0
@@ -2576,9 +2570,6 @@ light_color = Color(1, 0.86, 0.66, 1)
 light_energy = 1.5
 omni_range = 16.0
 
-[node name="LaughPlayer" type="AudioStreamPlayer3D" parent="CoffeeShopEnvironment" unique_id=856358069]
-volume_db = -8.0
-
 [node name="CoffeeExterior" type="Node3D" parent="CoffeeShopEnvironment" unique_id=885208120]
 
 [node name="Sidewalk" type="CSGBox3D" parent="CoffeeShopEnvironment/CoffeeExterior" unique_id=448226114]
@@ -2999,9 +2990,6 @@ light_color = Color(0.9, 0.96, 1, 1)
 light_energy = 1.4
 omni_range = 16.0
 
-[node name="LaughPlayer" type="AudioStreamPlayer3D" parent="GroceryEnvironment" unique_id=1122041843]
-volume_db = -8.0
-
 [node name="GroceryExterior" type="Node3D" parent="GroceryEnvironment" unique_id=1633738616]
 
 [node name="Parking" type="CSGBox3D" parent="GroceryEnvironment/GroceryExterior" unique_id=1738557001]
@@ -3378,3 +3366,6 @@ theme_override_font_sizes/font_size = 30
 horizontal_alignment = 1
 vertical_alignment = 2
 autowrap_mode = 3
+
+[node name="LaughPlayer" type="AudioStreamPlayer" parent="." unique_id=2063698013]
+volume_db = -8.0

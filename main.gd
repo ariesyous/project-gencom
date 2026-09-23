@@ -23,7 +23,6 @@ var SCENES := {
 		"cam_a": "ApartmentEnvironment/CameraAlan",
 		"cam_b": "ApartmentEnvironment/CameraBridgette",
 		"exterior_cam": "ApartmentEnvironment/ExteriorCam",
-		"laugh": "ApartmentEnvironment/LaughPlayer",
 		"seat_a": "ApartmentEnvironment/CouchBase/Seat1",
 		"seat_b": "ApartmentEnvironment/CouchBase/Seat2",
 		"spawn_a": Vector3(-2, 0, -2), "spawn_b": Vector3(2, 0, -2),
@@ -34,7 +33,6 @@ var SCENES := {
 		"cam_a": "CoffeeShopEnvironment/CameraAlan",
 		"cam_b": "CoffeeShopEnvironment/CameraBridgette",
 		"exterior_cam": "CoffeeShopEnvironment/ExteriorCam",
-		"laugh": "CoffeeShopEnvironment/LaughPlayer",
 		"seat_a": "CoffeeShopEnvironment/CafeTable/SeatC1",
 		"seat_b": "CoffeeShopEnvironment/CafeTable/SeatC2",
 		"spawn_a": Vector3(38, 0, -2), "spawn_b": Vector3(42, 0, -2),
@@ -46,7 +44,6 @@ var SCENES := {
 		"cam_b": "GroceryEnvironment/CameraBridgette",
 		"cam_k": "GroceryEnvironment/CameraKessler",  # Kessler only ever speaks here
 		"exterior_cam": "GroceryEnvironment/ExteriorCam",
-		"laugh": "GroceryEnvironment/LaughPlayer",
 		"seat_a": "", "seat_b": "",  # no seats — they wander the aisles
 		"spawn_a": Vector3(78, 0, -2), "spawn_b": Vector3(82, 0, -2),
 		"spawn_k": Vector3(80, 0, -3),  # Kessler's fallback spot inside the aisles
@@ -717,7 +714,7 @@ func _play_clip(node_path: String, audio_path: String) -> void:
 
 func play_laugh() -> void:
 	_cut_to_wide()
-	_play_clip(SCENES[current_scene]["laugh"], "res://audio/laugh" + str(randi_range(1, 4)) + ".mp3")
+	_play_clip("LaughPlayer", "res://audio/laugh" + str(randi_range(1, 4)) + ".mp3")
 	# Everyone who isn't mid-line visibly enjoys the joke — durations are
 	# randomized so the pair doesn't bob in lockstep.
 	for id in actors:
