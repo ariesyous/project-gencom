@@ -1,0 +1,237 @@
+{
+  "id": "ep0005",
+  "theme": "The universe is mind-blowingly huge, but at least we're in it together.",
+  "callback": "The licence plate in the stars",
+  "generated_at": "2026-09-24T09:20:22.126467+00:00",
+  "model": "deepseek/deepseek-v4.1-flash",
+  "events": [
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line000.mp3",
+      "text": "Okay, I just read that if the Sun were the size of a basketball, Earth would be a grain of sand about 30 metres away.",
+      "laugh": false,
+      "duration_s": 6.94
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line001.mp3",
+      "text": "Thirty metres? That's like from our couch to the end of the block. And the nearest star?",
+      "laugh": false,
+      "duration_s": 6.96
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line002.mp3",
+      "text": "Another basketball... about 6,000 kilometres away. Roughly Toronto to... Lisbon?",
+      "laugh": false,
+      "duration_s": 7.99
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line003.mp3",
+      "text": "So the universe is mostly empty parking lot.",
+      "laugh": false,
+      "duration_s": 3.55
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line004.mp3",
+      "text": "With a few basketballs. And a lot of really long walks.",
+      "laugh": true,
+      "duration_s": 4.97
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "coffee_shop"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line005.mp3",
+      "text": "I'm still stuck on that scale. It's like trying to imagine a trillion double-doubles.",
+      "laugh": false,
+      "duration_s": 6.31
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line006.mp3",
+      "text": "Please don't. I just got my head around the fact that a black hole's gravity is so strong that not even light can escape.",
+      "laugh": false,
+      "duration_s": 8.09
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line007.mp3",
+      "text": "Right. And the nearest one is Sagittarius A* at the centre of our galaxy, about 26,000 light-years away.",
+      "laugh": false,
+      "duration_s": 8.64
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line008.mp3",
+      "text": "So if it burped, we wouldn't know for 26,000 years.",
+      "laugh": false,
+      "duration_s": 4.34
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line009.mp3",
+      "text": "And by then, our double-doubles would be cold.",
+      "laugh": true,
+      "duration_s": 3.58
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line010.mp3",
+      "text": "That's the real tragedy.",
+      "laugh": false,
+      "duration_s": 2.3
+    },
+    {
+      "type": "set_scene",
+      "scene": "grocery"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line011.mp3",
+      "text": "You two! Perfect timing. I've calculated that this entire No Thrills is a scale model of the solar system.",
+      "laugh": false,
+      "duration_s": 6.07
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line012.mp3",
+      "text": "Is that so?",
+      "laugh": false,
+      "duration_s": 1.87
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line013.mp3",
+      "text": "The watermelon bin is the Sun. The frozen peas are Earth. And the toilet paper aisle? That's the Kuiper Belt.",
+      "laugh": false,
+      "duration_s": 5.76
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line014.mp3",
+      "text": "So where's Pluto?",
+      "laugh": false,
+      "duration_s": 2.09
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line015.mp3",
+      "text": "Behind the meat counter. Ask for Sal. He knows.",
+      "laugh": true,
+      "duration_s": 3.02
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line016.mp3",
+      "text": "We'll... take that under advisement.",
+      "laugh": false,
+      "duration_s": 3.0
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line017.mp3",
+      "text": "Also, I found a licence plate in the parking lot that says 'THE 6IX'. I think it's a sign from the cosmos. Gotta run!",
+      "laugh": false,
+      "duration_s": 6.55
+    },
+    {
+      "type": "set_scene",
+      "scene": "apartment"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line018.mp3",
+      "text": "So Kessler thinks the frozen peas are Earth. I can't decide if that's genius or a cry for help.",
+      "laugh": false,
+      "duration_s": 6.89
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line019.mp3",
+      "text": "Honestly, it's not far off. The scale of the universe is absurd. There are more stars in the observable universe than grains of sand on all of Earth's beaches.",
+      "laugh": false,
+      "duration_s": 10.99
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line020.mp3",
+      "text": "And we're on one grain, in one beach, in one city, in one country... feeling tiny.",
+      "laugh": false,
+      "duration_s": 5.57
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line021.mp3",
+      "text": "But here's the thing: in all that emptiness, we found each other. That's not tiny. That's a miracle.",
+      "laugh": false,
+      "duration_s": 8.18
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line022.mp3",
+      "text": "A miracle with a licence plate that says 'THE 6IX'.",
+      "laugh": false,
+      "duration_s": 3.89
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line023.mp3",
+      "text": "Exactly.",
+      "laugh": true,
+      "duration_s": 1.87
+    },
+    {
+      "type": "trigger_laugh"
+    }
+  ]
+}
