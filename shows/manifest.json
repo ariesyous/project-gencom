@@ -29,6 +29,12 @@
       "theme": "The universe is mind-blowingly huge, but at least we're in it together.",
       "aired_at": "2026-09-24T09:20:22.126467+00:00",
       "path": "shows/ep0005/episode.json"
+    },
+    {
+      "id": "ep0006",
+      "theme": "The Great Molasses Flood of 1919: a sticky disaster that somehow brought people together.",
+      "aired_at": "2026-09-25T09:37:50.321276+00:00",
+      "path": "shows/ep0006/episode.json"
     }
   ]
 }

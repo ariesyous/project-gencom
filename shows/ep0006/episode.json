@@ -1,0 +1,253 @@
+{
+  "id": "ep0006",
+  "theme": "The Great Molasses Flood of 1919: a sticky disaster that somehow brought people together.",
+  "callback": "The Molasses Flood Licence Plate",
+  "generated_at": "2026-09-25T09:37:50.321276+00:00",
+  "model": "deepseek/deepseek-v4.1-flash",
+  "events": [
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line000.mp3",
+      "text": "Hey, you remember that CN Tower licence plate bit? I was reading about the Great Molasses Flood of 1919 and\u2014",
+      "laugh": false,
+      "duration_s": 8.5
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line001.mp3",
+      "text": "The what now? That sounds like a dessert gone rogue.",
+      "laugh": false,
+      "duration_s": 4.46
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line002.mp3",
+      "text": "A giant tank of molasses burst in Boston. Sent a wave of syrup through the streets at like 35 miles an hour.",
+      "laugh": false,
+      "duration_s": 7.94
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line003.mp3",
+      "text": "Thirty-five miles an hour? That's faster than the streetcar on Queen. And stickier.",
+      "laugh": false,
+      "duration_s": 7.01
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line004.mp3",
+      "text": "People actually got trapped in it. It was two and a half million gallons of the stuff.",
+      "laugh": false,
+      "duration_s": 6.29
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line005.mp3",
+      "text": "Okay, that's horrifying and also... I kind of want to see a wave of molasses. Is that wrong?",
+      "laugh": true,
+      "duration_s": 7.8
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "coffee_shop"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line006.mp3",
+      "text": "So I fell down a rabbit hole. The molasses was for making rum and munitions during World War I.",
+      "laugh": false,
+      "duration_s": 6.98
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line007.mp3",
+      "text": "Rum and munitions? That's the most 1919 sentence I've ever heard.",
+      "laugh": false,
+      "duration_s": 5.78
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line008.mp3",
+      "text": "And the tank was shoddily built. They painted it brown to hide the leaks.",
+      "laugh": false,
+      "duration_s": 5.66
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line009.mp3",
+      "text": "Classic. If you can't fix it, paint it the colour of the thing that's leaking.",
+      "laugh": false,
+      "duration_s": 5.76
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line010.mp3",
+      "text": "The court case took six years. It's still one of the longest in Massachusetts history.",
+      "laugh": false,
+      "duration_s": 6.46
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line011.mp3",
+      "text": "Six years of lawyers arguing about syrup. I bet they all needed a double-double after that.",
+      "laugh": true,
+      "duration_s": 6.65
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "grocery"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line012.mp3",
+      "text": "I'm just saying, if a molasses flood hit this No Thrills, we'd be stuck to the floor like flies on flypaper.",
+      "laugh": false,
+      "duration_s": 6.53
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line013.mp3",
+      "text": "Don't give the universe ideas. We still have to get through the checkout.",
+      "laugh": false,
+      "duration_s": 5.28
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line014.mp3",
+      "text": "Did somebody say molasses? I've got a cousin who swears the flood was caused by a secret society of pancake enthusiasts.",
+      "laugh": false,
+      "duration_s": 6.24
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line015.mp3",
+      "text": "Kessler, that's not\u2014",
+      "laugh": false,
+      "duration_s": 2.35
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line016.mp3",
+      "text": "They meet on the third Tuesday. Very sticky business. I've said too much.",
+      "laugh": false,
+      "duration_s": 3.94
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line017.mp3",
+      "text": "Every time. Every single time we come here.",
+      "laugh": true,
+      "duration_s": 4.37
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "apartment"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line018.mp3",
+      "text": "You know what got me? After the flood, people came from all over to help clean up. Neighbours, strangers, even kids.",
+      "laugh": false,
+      "duration_s": 9.26
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line019.mp3",
+      "text": "Really? In the middle of all that goo?",
+      "laugh": false,
+      "duration_s": 3.7
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line020.mp3",
+      "text": "Yeah. It was a disaster, but it also brought the city together. Like a really gross, sticky block party.",
+      "laugh": false,
+      "duration_s": 8.62
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line021.mp3",
+      "text": "That's weirdly beautiful. Like us, but with more molasses.",
+      "laugh": false,
+      "duration_s": 5.26
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line022.mp3",
+      "text": "I even found a souvenir licence plate from the 75th anniversary. It says 'Molasses Flood Survivor'.",
+      "laugh": false,
+      "duration_s": 7.92
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line023.mp3",
+      "text": "Of course you did. Put it next to the CN Tower one. Our wall is becoming a museum of weird Toronto-adjacent history.",
+      "laugh": true,
+      "duration_s": 9.12
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line024.mp3",
+      "text": "And you're the only person I'd want to be stuck in a molasses wave with.",
+      "laugh": false,
+      "duration_s": 4.42
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line025.mp3",
+      "text": "Same. But if it happens, I'm holding your hand so we don't drift apart. Literally.",
+      "laugh": false,
+      "duration_s": 7.44
+    }
+  ]
+}
