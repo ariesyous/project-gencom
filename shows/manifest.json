@@ -35,6 +35,12 @@
       "theme": "The Great Molasses Flood of 1919: a sticky disaster that somehow brought people together.",
       "aired_at": "2026-09-25T09:37:50.321276+00:00",
       "path": "shows/ep0006/episode.json"
+    },
+    {
+      "id": "ep0007",
+      "theme": "Surviving the TTC's streetcar chaos as a team sport",
+      "aired_at": "2026-09-26T09:22:50.259780+00:00",
+      "path": "shows/ep0007/episode.json"
     }
   ]
 }

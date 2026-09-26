@@ -1,0 +1,237 @@
+{
+  "id": "ep0007",
+  "theme": "Surviving the TTC's streetcar chaos as a team sport",
+  "callback": "The rocket pocket dial",
+  "generated_at": "2026-09-26T09:22:50.259780+00:00",
+  "model": "deepseek/deepseek-v4.1-flash",
+  "events": [
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line000.mp3",
+      "text": "The 504 is delayed again. I've been standing at King and Spadina so long a pigeon started nesting in my hood.",
+      "laugh": false,
+      "duration_s": 7.75
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line001.mp3",
+      "text": "That's commitment. The TTC's new slogan: 'We'll get there when we get there, eh.'",
+      "laugh": false,
+      "duration_s": 6.26
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line002.mp3",
+      "text": "I swear the streetcar is like a Toronto myth. You hear the chime, you get excited, then it's just a guy with a bell on a unicycle.",
+      "laugh": false,
+      "duration_s": 8.71
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line003.mp3",
+      "text": "You know the chime is actually a real thing - those old Peter Witt streetcars had a distinctive gong. It's practically a heritage sound.",
+      "laugh": false,
+      "duration_s": 8.62
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line004.mp3",
+      "text": "Heritage sound or not, I once waited 22 minutes, then three came at once, like they were carpooling.",
+      "laugh": false,
+      "duration_s": 6.41
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line005.mp3",
+      "text": "Classic. The TTC: where 'next vehicle' is a philosophical concept.",
+      "laugh": true,
+      "duration_s": 6.31
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "coffee_shop"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line006.mp3",
+      "text": "I tried the Rocket yesterday - the new subway train. Felt like I was in a sci-fi movie, but with more gum on the floor.",
+      "laugh": false,
+      "duration_s": 7.97
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line007.mp3",
+      "text": "The Rocket is actually faster and has that open gangway design. You can walk from car to car without being judged.",
+      "laugh": false,
+      "duration_s": 7.82
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line008.mp3",
+      "text": "I walked to the next car and a guy was playing a ukulele. Badly. It was like a tiny, sad concert on wheels.",
+      "laugh": false,
+      "duration_s": 8.83
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line009.mp3",
+      "text": "You should've started a conga line. Turn that delay into a party.",
+      "laugh": false,
+      "duration_s": 5.09
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line010.mp3",
+      "text": "I did. One person joined. A golden retriever. Best commute ever.",
+      "laugh": false,
+      "duration_s": 7.97
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line011.mp3",
+      "text": "See? The TTC brings people together - and dogs.",
+      "laugh": true,
+      "duration_s": 4.99
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "grocery"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line012.mp3",
+      "text": "We're out of everything. This is what happens when you spend your grocery money on TTC fares.",
+      "laugh": false,
+      "duration_s": 6.6
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line013.mp3",
+      "text": "Worth it. I'd rather ride the 504 than eat.",
+      "laugh": false,
+      "duration_s": 4.78
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line014.mp3",
+      "text": "Did someone say 504? I once predicted a delay using a broken metronome and a bag of day-old bagels. The TTC called it 'coincidence.' I call it 'streetcar sorcery.'",
+      "laugh": false,
+      "duration_s": 9.84
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line015.mp3",
+      "text": "Kessler, are you stalking us or just haunting the discount aisle?",
+      "laugh": false,
+      "duration_s": 4.18
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line016.mp3",
+      "text": "I'm a ghost of commutes past. Also, the canned beans are two-for-one. You're welcome.",
+      "laugh": true,
+      "duration_s": 4.73
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line017.mp3",
+      "text": "He disappears like a streetcar when you actually need one.",
+      "laugh": false,
+      "duration_s": 3.89
+    },
+    {
+      "type": "set_scene",
+      "scene": "apartment"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line018.mp3",
+      "text": "Remember that time we got stuck on the 504 for an hour and you started a singalong?",
+      "laugh": false,
+      "duration_s": 5.42
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line019.mp3",
+      "text": "We sang 'The Wheels on the Bus' but replaced 'bus' with 'streetcar.' The driver joined in.",
+      "laugh": false,
+      "duration_s": 6.24
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line020.mp3",
+      "text": "Then you accidentally pocket-dialed my mom. I still have the voicemail of us belting show tunes at Spadina and Queen.",
+      "laugh": false,
+      "duration_s": 8.02
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line021.mp3",
+      "text": "That's our rocket pocket dial. At least she knows we're having fun.",
+      "laugh": false,
+      "duration_s": 5.33
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line022.mp3",
+      "text": "You know, the TTC is a mess, but it's our mess. Like that license plate in the stars - we're all just trying to get somewhere.",
+      "laugh": false,
+      "duration_s": 8.33
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line023.mp3",
+      "text": "And as long as we're on the same streetcar, even a delay feels like an adventure.",
+      "laugh": true,
+      "duration_s": 5.06
+    },
+    {
+      "type": "trigger_laugh"
+    }
+  ]
+}
