@@ -41,6 +41,12 @@
       "theme": "Surviving the TTC's streetcar chaos as a team sport",
       "aired_at": "2026-09-26T09:22:50.259780+00:00",
       "path": "shows/ep0007/episode.json"
+    },
+    {
+      "id": "ep0008",
+      "theme": "The Sopranos: family, therapy, and the sacred cold cut",
+      "aired_at": "2026-09-27T10:03:38.934166+00:00",
+      "path": "shows/ep0008/episode.json"
     }
   ]
 }

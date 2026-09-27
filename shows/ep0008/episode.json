@@ -1,0 +1,285 @@
+{
+  "id": "ep0008",
+  "theme": "The Sopranos: family, therapy, and the sacred cold cut",
+  "callback": "The gabagool is a state of mind",
+  "generated_at": "2026-09-27T10:03:38.934166+00:00",
+  "model": "deepseek/deepseek-v4.1-flash",
+  "events": [
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line000.mp3",
+      "text": "So I finally finished The Sopranos. All six seasons. I feel like I need a therapist and a deli platter.",
+      "laugh": false,
+      "duration_s": 8.74
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line001.mp3",
+      "text": "Welcome to the family. I told you - it's not a show, it's a lifestyle. You start saying 'gabagool' and suddenly you're judging everyone's capicola.",
+      "laugh": false,
+      "duration_s": 10.51
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line002.mp3",
+      "text": "It's pronounced 'gabagool'? I thought that was just a meme.",
+      "laugh": false,
+      "duration_s": 4.85
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line003.mp3",
+      "text": "It's a dialect thing. Southern Italian immigrants in New Jersey said 'capicola' so fast it became 'gabagool.' Like how Toronto says 'Tronno.'",
+      "laugh": false,
+      "duration_s": 10.46
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line004.mp3",
+      "text": "So I've been eating gabagool my whole life and didn't know it. That's... actually profound.",
+      "laugh": false,
+      "duration_s": 6.53
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line005.mp3",
+      "text": "You're having an existential crisis over cold cuts. This is the most Sopranos thing that's ever happened to you.",
+      "laugh": true,
+      "duration_s": 7.34
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "coffee_shop"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line006.mp3",
+      "text": "I can't stop thinking about Dr. Melfi. Like, Tony's in therapy, lying to her, having panic attacks about ducks... and I'm here stressed about whether to get a double-double or a triple-triple.",
+      "laugh": false,
+      "duration_s": 11.69
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line007.mp3",
+      "text": "That's your panic attack? The duck thing is iconic. He sees a family of ducks leave his pool and it unravels him.",
+      "laugh": false,
+      "duration_s": 8.62
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line008.mp3",
+      "text": "Because the ducks represented his family! And they left! That's the whole show in one image.",
+      "laugh": false,
+      "duration_s": 7.51
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line009.mp3",
+      "text": "Okay, Dr. Melfi. Next you'll tell me the pine barrens episode is a metaphor for existential isolation.",
+      "laugh": false,
+      "duration_s": 7.99
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line010.mp3",
+      "text": "It IS! They're lost in the woods, no cell service, and they might have killed a guy who was maybe a Russian interior decorator. It's purgatory with snow.",
+      "laugh": false,
+      "duration_s": 10.92
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line011.mp3",
+      "text": "You're one Timbit away from writing a dissertation.",
+      "laugh": true,
+      "duration_s": 3.41
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "grocery"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line012.mp3",
+      "text": "Okay, No Thrills has a whole deli section. This is my gabagool moment.",
+      "laugh": false,
+      "duration_s": 6.12
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line013.mp3",
+      "text": "You're going to stand here and pronounce it like a mob boss, aren't you.",
+      "laugh": false,
+      "duration_s": 4.42
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line014.mp3",
+      "text": "Gabagool. Gabagool. It's like a meditation.",
+      "laugh": false,
+      "duration_s": 5.52
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line015.mp3",
+      "text": "Did somebody say gabagool? I once tried to import a whole leg of prosciutto from Jersey on the TTC. Got stopped at Spadina. They thought it was a weapon.",
+      "laugh": false,
+      "duration_s": 7.8
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line016.mp3",
+      "text": "Kessler, of course you did.",
+      "laugh": false,
+      "duration_s": 2.59
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line017.mp3",
+      "text": "The trick is to wrap it in a Canada Goose jacket. Insulated. Discreet. Smells like a deli in a snowsuit. Anyway, the gabagool here is 30% off if you buy the family pack. Family pack. Like the Sopranos. It's a sign.",
+      "laugh": false,
+      "duration_s": 12.72
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line018.mp3",
+      "text": "I'm buying the family pack.",
+      "laugh": false,
+      "duration_s": 2.52
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line019.mp3",
+      "text": "We are not a family of six, Alan.",
+      "laugh": false,
+      "duration_s": 3.12
+    },
+    {
+      "type": "play_audio",
+      "actor": "K",
+      "file": "audio/line020.mp3",
+      "text": "You are now.",
+      "laugh": true,
+      "duration_s": 0.84
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "set_scene",
+      "scene": "apartment"
+    },
+    {
+      "type": "skit_boundary"
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line021.mp3",
+      "text": "Okay, I've been thinking. Tony Soprano's whole thing is that he can't talk to his family about his feelings, so he pays a therapist. But he lies to her too.",
+      "laugh": false,
+      "duration_s": 10.92
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line022.mp3",
+      "text": "So the one person he's supposed to be honest with... he can't be honest with.",
+      "laugh": false,
+      "duration_s": 4.82
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line023.mp3",
+      "text": "Right. And the ducks, the panic attacks, the gabagool - it's all about trying to feed something that's starving.",
+      "laugh": false,
+      "duration_s": 7.39
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line024.mp3",
+      "text": "That's... actually really sad. And you got there from a deli counter.",
+      "laugh": false,
+      "duration_s": 5.57
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line025.mp3",
+      "text": "I got there from you. You're the Dr. Melfi to my Tony, except you don't charge me and you actually laugh at my jokes.",
+      "laugh": false,
+      "duration_s": 7.8
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line026.mp3",
+      "text": "And I don't have to worry about you whacking anyone. Usually.",
+      "laugh": false,
+      "duration_s": 4.92
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line027.mp3",
+      "text": "Only the gabagool.",
+      "laugh": true,
+      "duration_s": 2.14
+    },
+    {
+      "type": "trigger_laugh"
+    },
+    {
+      "type": "play_audio",
+      "actor": "B",
+      "file": "audio/line028.mp3",
+      "text": "You know, the show's real lesson? Family is complicated, but you show up. And you share the cold cuts.",
+      "laugh": false,
+      "duration_s": 8.18
+    },
+    {
+      "type": "play_audio",
+      "actor": "A",
+      "file": "audio/line029.mp3",
+      "text": "Then here's to us. And to the family pack.",
+      "laugh": false,
+      "duration_s": 4.25
+    }
+  ]
+}
