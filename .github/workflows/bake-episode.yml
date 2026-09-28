@@ -1,10 +1,6 @@
 name: Bake Episode
 
 on:
-  schedule:
-    # 04:17 UTC daily. Offset from the hour to avoid the top-of-hour GitHub
-    # Actions cron rush (same pattern as ariesyous/openfeed).
-    - cron: "17 4 * * *"
   workflow_dispatch:
     inputs:
       model:
